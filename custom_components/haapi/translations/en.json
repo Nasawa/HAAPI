@@ -38,6 +38,44 @@
           "bearer_token": "Token for Bearer authentication",
           "api_key": "API key for API Key authentication (sent as X-API-Key header)"
         }
+      },
+      "reconfigure_confirm": {
+        "title": "Reconfigure API Endpoint",
+        "description": "Update the configuration for this API endpoint. You can use Jinja2 templates in URL, headers, and body fields.",
+        "data": {
+          "endpoint_name": "Endpoint Name",
+          "url": "URL",
+          "method": "HTTP Method",
+          "headers": "Headers (one per line: 'Key: Value')",
+          "body": "Request Body",
+          "content_type": "Content-Type"
+        },
+        "data_description": {
+          "endpoint_name": "A unique name for this API endpoint",
+          "url": "The API endpoint URL (supports Jinja2 templates)",
+          "method": "HTTP method to use",
+          "headers": "Request headers in 'Key: Value' format, one per line (supports templates)",
+          "body": "Request body content (supports templates)",
+          "content_type": "Content-Type header for the request"
+        }
+      },
+      "reconfigure_auth": {
+        "title": "Reconfigure Authentication",
+        "description": "Update authentication configuration for {endpoint_name}",
+        "data": {
+          "auth_type": "Authentication Type",
+          "username": "Username",
+          "password": "Password",
+          "bearer_token": "Bearer Token",
+          "api_key": "API Key"
+        },
+        "data_description": {
+          "auth_type": "Type of authentication to use",
+          "username": "Username for Basic authentication",
+          "password": "Password for Basic authentication",
+          "bearer_token": "Token for Bearer authentication",
+          "api_key": "API key for API Key authentication (sent as X-API-Key header)"
+        }
       }
     },
     "error": {
@@ -46,7 +84,8 @@
       "unknown": "Unexpected error occurred"
     },
     "abort": {
-      "already_configured": "This endpoint name is already configured"
+      "already_configured": "This endpoint name is already configured",
+      "reconfigure_successful": "Configuration updated successfully"
     }
   }
 }
