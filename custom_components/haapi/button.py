@@ -34,7 +34,7 @@ class HaapiButton(ButtonEntity):
         self._entry = entry
         endpoint_name = entry.data[CONF_ENDPOINT_NAME]
 
-        self._attr_name = f"{endpoint_name} Trigger"
+        self._attr_name = "Trigger"
         self._attr_unique_id = f"{entry.entry_id}_trigger"
         self._attr_has_entity_name = True
 

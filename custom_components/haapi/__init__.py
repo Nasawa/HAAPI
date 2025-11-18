@@ -13,6 +13,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import template
 from homeassistant.exceptions import TemplateError
+from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
@@ -188,7 +189,7 @@ class HaapiApiCaller:
                         auth=auth,
                     ) as response:
                         self._last_response_code = response.status
-                        self._last_fetch_time = datetime.now()
+                        self._last_fetch_time = dt_util.utcnow()
                         self._last_response_body = await response.text()
                         self._last_response_headers = dict(response.headers)
 
@@ -201,14 +202,14 @@ class HaapiApiCaller:
         except aiohttp.ClientError as err:
             _LOGGER.error("Error calling API %s: %s", url, err)
             self._last_response_code = 0
-            self._last_fetch_time = datetime.now()
+            self._last_fetch_time = dt_util.utcnow()
             self._last_response_body = str(err)
             self._last_response_headers = {}
 
         except Exception as err:
             _LOGGER.error("Unexpected error calling API %s: %s", url, err)
             self._last_response_code = 0
-            self._last_fetch_time = datetime.now()
+            self._last_fetch_time = dt_util.utcnow()
             self._last_response_body = str(err)
             self._last_response_headers = {}
 

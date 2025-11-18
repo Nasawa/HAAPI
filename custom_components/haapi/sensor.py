@@ -79,7 +79,7 @@ class HaapiResponseCodeSensor(HaapiBaseSensor):
     def __init__(self, api_caller, entry: ConfigEntry) -> None:
         """Initialize the response code sensor."""
         super().__init__(api_caller, entry)
-        self._attr_name = f"{self._endpoint_name} Response Code"
+        self._attr_name = "Response Code"
         self._attr_unique_id = f"{entry.entry_id}_response_code"
         self._attr_has_entity_name = True
         self._attr_icon = "mdi:code-brackets"
@@ -104,7 +104,7 @@ class HaapiFetchTimeSensor(HaapiBaseSensor):
     def __init__(self, api_caller, entry: ConfigEntry) -> None:
         """Initialize the fetch time sensor."""
         super().__init__(api_caller, entry)
-        self._attr_name = f"{self._endpoint_name} Last Fetch Time"
+        self._attr_name = "Last Fetch Time"
         self._attr_unique_id = f"{entry.entry_id}_fetch_time"
         self._attr_has_entity_name = True
         self._attr_device_class = SensorDeviceClass.TIMESTAMP
@@ -122,7 +122,7 @@ class HaapiResponseBodySensor(HaapiBaseSensor):
     def __init__(self, api_caller, entry: ConfigEntry) -> None:
         """Initialize the response body sensor."""
         super().__init__(api_caller, entry)
-        self._attr_name = f"{self._endpoint_name} Response Body"
+        self._attr_name = "Response Body"
         self._attr_unique_id = f"{entry.entry_id}_response_body"
         self._attr_has_entity_name = True
         self._attr_icon = "mdi:file-document-outline"
