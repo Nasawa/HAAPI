@@ -22,8 +22,17 @@ VALID_API_KEY = 'test-api-key-67890'
 def check_basic_auth():
     """Check if Basic Auth credentials are valid."""
     auth = request.authorization
-    if auth and auth.username == VALID_USERNAME and auth.password == VALID_PASSWORD:
-        return True
+    print(f"[DEBUG] Basic Auth check - Authorization: {auth}")
+    if auth:
+        print(f"[DEBUG] Username: {auth.username}, Password: {auth.password}")
+        print(f"[DEBUG] Expected - Username: {VALID_USERNAME}, Password: {VALID_PASSWORD}")
+        if auth.username == VALID_USERNAME and auth.password == VALID_PASSWORD:
+            print("[DEBUG] ✓ Authentication successful")
+            return True
+        else:
+            print("[DEBUG] ✗ Authentication failed - wrong credentials")
+    else:
+        print("[DEBUG] ✗ No authorization header found")
     return False
 
 

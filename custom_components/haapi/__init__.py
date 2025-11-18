@@ -171,10 +171,12 @@ class HaapiApiCaller:
             username = self.entry.data.get(CONF_USERNAME)
             password = self.entry.data.get(CONF_PASSWORD)
             if username and password:
-                auth = aiohttp.BasicAuth(
-                    self._render_template(username),
-                    self._render_template(password)
-                )
+                rendered_username = self._render_template(username)
+                rendered_password = self._render_template(password)
+                auth = aiohttp.BasicAuth(rendered_username, rendered_password)
+                _LOGGER.debug("Using Basic Auth with username: %s", rendered_username)
+            else:
+                _LOGGER.warning("Basic Auth selected but username or password is missing")
 
         _LOGGER.debug("Calling API: %s %s", method, url)
 
