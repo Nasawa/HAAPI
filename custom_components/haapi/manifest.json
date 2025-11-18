@@ -1,12 +1,12 @@
 {
   "domain": "haapi",
   "name": "HAAPI - Home Assistant API Integration",
-  "codeowners": [],
+  "codeowners": ["@Nasawa"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/yourusername/haapi",
+  "documentation": "https://github.com/Nasawa/HAAPI",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/yourusername/haapi/issues",
+  "issue_tracker": "https://github.com/Nasawa/HAAPI/issues",
   "requirements": [],
   "version": "1.0.0"
 }

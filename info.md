@@ -51,4 +51,4 @@ template:
 
 ## Documentation
 
-Full documentation and examples available in the [README](https://github.com/yourusername/haapi/blob/main/README.md).
+Full documentation and examples available in the [README](https://github.com/Nasawa/HAAPI/blob/main/README.md).
