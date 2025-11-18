@@ -9,6 +9,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
@@ -69,8 +70,12 @@ class HaapiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_ENDPOINT_NAME): cv.string,
                 vol.Required(CONF_URL): cv.string,
                 vol.Required(CONF_METHOD, default=DEFAULT_METHOD): vol.In(HTTP_METHODS),
-                vol.Optional(CONF_HEADERS, default=""): cv.string,
-                vol.Optional(CONF_BODY, default=""): cv.string,
+                vol.Optional(CONF_HEADERS, default=""): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True)
+                ),
+                vol.Optional(CONF_BODY, default=""): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True)
+                ),
                 vol.Optional(CONF_CONTENT_TYPE, default=DEFAULT_CONTENT_TYPE): cv.string,
             }
         )
