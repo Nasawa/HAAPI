@@ -20,8 +20,12 @@ from .const import (
     CONF_ENDPOINT_NAME,
     CONF_URL,
     CONF_METHOD,
+    CONF_HEADERS,
+    CONF_BODY,
     ATTR_RESPONSE_BODY,
     ATTR_RESPONSE_HEADERS,
+    ATTR_REQUEST_HEADERS,
+    ATTR_REQUEST_BODY,
     ATTR_URL,
     ATTR_METHOD,
 )
@@ -92,10 +96,19 @@ class HaapiResponseCodeSensor(HaapiBaseSensor):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes."""
-        return {
+        attrs = {
             ATTR_URL: self._entry.data[CONF_URL],
             ATTR_METHOD: self._entry.data[CONF_METHOD],
         }
+
+        # Add raw request headers and body (non-templated)
+        if CONF_HEADERS in self._entry.data and self._entry.data[CONF_HEADERS]:
+            attrs[ATTR_REQUEST_HEADERS] = self._entry.data[CONF_HEADERS]
+
+        if CONF_BODY in self._entry.data and self._entry.data[CONF_BODY]:
+            attrs[ATTR_REQUEST_BODY] = self._entry.data[CONF_BODY]
+
+        return attrs
 
 
 class HaapiFetchTimeSensor(HaapiBaseSensor):
