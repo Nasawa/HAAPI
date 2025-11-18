@@ -1,0 +1,5 @@
+{
+  "name": "HAAPI - Home Assistant API Integration",
+  "render_readme": true,
+  "homeassistant": "2025.11.0"
+}

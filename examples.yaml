@@ -1,0 +1,128 @@
+# HAAPI Usage Examples
+# These examples show how to use HAAPI entities in automations and scripts
+
+# Example 1: Trigger API call on button press
+automation:
+  - alias: "Fetch Chuck Norris Joke on Button Press"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.get_joke
+        to: "on"
+    action:
+      - service: button.press
+        target:
+          entity_id: button.chuck_norris_jokes_trigger
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.get_joke
+
+# Example 2: Daily scheduled API call
+automation:
+  - alias: "Daily Weather Update"
+    trigger:
+      - platform: time
+        at: "07:00:00"
+    action:
+      - service: button.press
+        target:
+          entity_id: button.weather_api_trigger
+
+# Example 3: Conditional API call based on response code
+automation:
+  - alias: "Retry API on Error"
+    trigger:
+      - platform: state
+        entity_id: sensor.my_api_response_code
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.my_api_response_code') | int >= 400 }}"
+    action:
+      - delay: "00:01:00"
+      - service: button.press
+        target:
+          entity_id: button.my_api_trigger
+
+# Example 4: Parse JSON response and send notification
+automation:
+  - alias: "Chuck Norris Joke Notification"
+    trigger:
+      - platform: state
+        entity_id: sensor.chuck_norris_jokes_response_body
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.chuck_norris_jokes_response_code') == '200' }}"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "Chuck Norris Fact"
+          message: >
+            {{ (state_attr('sensor.chuck_norris_jokes_response_body', 'response_body') | from_json).value }}
+
+# Example 5: Template sensor to extract JSON data
+template:
+  - sensor:
+      - name: "API Response Status"
+        state: >
+          {% if states('sensor.my_api_response_code') | int == 200 %}
+            Success
+          {% elif states('sensor.my_api_response_code') | int >= 400 %}
+            Error
+          {% else %}
+            Unknown
+          {% endif %}
+        icon: >
+          {% if states('sensor.my_api_response_code') | int == 200 %}
+            mdi:check-circle
+          {% else %}
+            mdi:alert-circle
+          {% endif %}
+
+      - name: "Chuck Norris Joke"
+        state: >
+          {% set body = state_attr('sensor.chuck_norris_jokes_response_body', 'response_body') %}
+          {% if body %}
+            {{ (body | from_json).value }}
+          {% else %}
+            No joke available
+          {% endif %}
+
+      - name: "API Last Call"
+        state: >
+          {{ relative_time(states('sensor.my_api_fetch_time')) }} ago
+        device_class: timestamp
+
+# Example 6: Script to call API with delay and check result
+script:
+  fetch_and_notify:
+    alias: "Fetch API and Notify"
+    sequence:
+      - service: button.press
+        target:
+          entity_id: button.my_api_trigger
+      - delay: "00:00:05"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ states('sensor.my_api_response_code') == '200' }}"
+            sequence:
+              - service: notify.persistent_notification
+                data:
+                  title: "API Success"
+                  message: "API call completed successfully"
+        default:
+          - service: notify.persistent_notification
+            data:
+              title: "API Failed"
+              message: >
+                API call failed with code {{ states('sensor.my_api_response_code') }}
+
+# Example 7: Call API when sensor value changes
+automation:
+  - alias: "Log Temperature Change"
+    trigger:
+      - platform: state
+        entity_id: sensor.living_room_temperature
+    action:
+      - service: button.press
+        target:
+          entity_id: button.temperature_logger_trigger
