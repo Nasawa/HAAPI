@@ -11,7 +11,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import selector, entity_registry as er
+from homeassistant.helpers import selector, entity_registry as er, device_registry as dr
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
@@ -112,10 +112,16 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(CONF_URL): cv.string,
                 vol.Required(CONF_METHOD, default=DEFAULT_METHOD): vol.In(HTTP_METHODS),
                 vol.Optional(CONF_HEADERS, default=""): selector.TextSelector(
-                    selector.TextSelectorConfig(multiline=True)
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        type=selector.TextSelectorType.TEXT,
+                    )
                 ),
                 vol.Optional(CONF_BODY, default=""): selector.TextSelector(
-                    selector.TextSelectorConfig(multiline=True)
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        type=selector.TextSelectorType.TEXT,
+                    )
                 ),
                 vol.Optional(CONF_CONTENT_TYPE, default=DEFAULT_CONTENT_TYPE): cv.string,
             }
@@ -225,13 +231,19 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_HEADERS,
                     default=self._endpoint_data.get(CONF_HEADERS, "")
                 ): selector.TextSelector(
-                    selector.TextSelectorConfig(multiline=True)
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        type=selector.TextSelectorType.TEXT,
+                    )
                 ),
                 vol.Optional(
                     CONF_BODY,
                     default=self._endpoint_data.get(CONF_BODY, "")
                 ): selector.TextSelector(
-                    selector.TextSelectorConfig(multiline=True)
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        type=selector.TextSelectorType.TEXT,
+                    )
                 ),
                 vol.Optional(
                     CONF_CONTENT_TYPE,
@@ -324,6 +336,18 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
                         entity_entry.entity_id,
                         endpoint_id_to_remove,
                     )
+
+            # Remove the device associated with this endpoint
+            device_registry = dr.async_get(self.hass)
+            device_identifier = (DOMAIN, f"{self.config_entry.entry_id}_{endpoint_id_to_remove}")
+            device_entry = device_registry.async_get_device(identifiers={device_identifier})
+
+            if device_entry:
+                device_registry.async_remove_device(device_entry.id)
+                _LOGGER.debug(
+                    "Removed device for endpoint %s",
+                    endpoint_id_to_remove,
+                )
 
             # Remove the endpoint from options
             endpoints = [

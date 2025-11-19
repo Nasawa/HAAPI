@@ -41,8 +41,8 @@
           "endpoint_name": "A unique name for this API endpoint",
           "url": "The API endpoint URL (supports Jinja2 templates)",
           "method": "HTTP method to use",
-          "headers": "Request headers in 'Key: Value' format, one per line (supports templates)",
-          "body": "Request body content (supports templates)",
+          "headers": "Headers in 'Key: Value' format, one per line. For multiple headers, paste multiline content (e.g., 'Authorization: Bearer token' on one line, 'Content-Type: application/json' on the next)",
+          "body": "Request body content. For multiline JSON/XML/text, paste your formatted content here (supports Jinja2 templates)",
           "content_type": "Content-Type header for the request"
         }
       },
@@ -88,8 +88,8 @@
           "endpoint_name": "A unique name for this API endpoint",
           "url": "The API endpoint URL (supports Jinja2 templates)",
           "method": "HTTP method to use",
-          "headers": "Request headers in 'Key: Value' format, one per line (supports templates)",
-          "body": "Request body content (supports templates)",
+          "headers": "Headers in 'Key: Value' format, one per line. For multiple headers, paste multiline content (e.g., 'Authorization: Bearer token' on one line, 'Content-Type: application/json' on the next)",
+          "body": "Request body content. For multiline JSON/XML/text, paste your formatted content here (supports Jinja2 templates)",
           "content_type": "Content-Type header for the request"
         }
       },
