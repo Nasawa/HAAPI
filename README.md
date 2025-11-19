@@ -283,8 +283,45 @@ docs/
 test_servers/
 ├── echo_server.py       # Local testing server
 ├── auth_server.py       # Authentication testing server
+├── https_server.py      # HTTPS testing server
 └── README.md            # Test server documentation
+
+tests/
+├── __init__.py          # Test package init
+├── conftest.py          # Pytest fixtures
+├── test_config_flow.py  # Config flow tests
+├── test_init.py         # API caller tests
+├── test_button.py       # Button entity tests
+└── test_sensor.py       # Sensor entity tests
 ```
+
+</details>
+
+<details>
+<summary><strong>Running Tests</strong></summary>
+
+HAAPI includes comprehensive unit tests using pytest.
+
+**Install test dependencies:**
+```bash
+pip install -r requirements_test.txt
+```
+
+**Run all tests:**
+```bash
+pytest tests/
+```
+
+**Run with coverage report:**
+```bash
+pytest tests/ --cov=custom_components.haapi --cov-report=html
+```
+
+**Test coverage includes:**
+- Config flow (setup, add/edit/remove endpoints)
+- API caller (successful calls, errors, retries, truncation, SSL)
+- Button entity (trigger functionality)
+- Sensor entities (request/response attributes)
 
 </details>
 
