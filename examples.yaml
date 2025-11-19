@@ -125,3 +125,189 @@ automation:
       - service: button.press
         target:
           entity_id: button.temperature_logger_trigger
+
+# ============================================
+# INPUT HELPER EXAMPLES
+# ============================================
+
+# Example 8: Dynamic City Weather with input_text
+# Create this input_text in configuration.yaml:
+# input_text:
+#   city_name:
+#     name: City Name
+#     initial: London
+#     icon: mdi:city
+#
+# Configure HAAPI endpoint:
+# - Name: Weather by City
+# - URL: https://api.weather.com/v3/wx/forecast?city={{ states('input_text.city_name') }}
+# - Method: GET
+
+automation:
+  - alias: "Update Weather on City Change"
+    trigger:
+      - platform: state
+        entity_id: input_text.city_name
+    action:
+      - delay: 1  # Brief delay to allow user to finish typing
+      - service: button.press
+        target:
+          entity_id: button.weather_by_city_trigger
+
+# Example 9: Dynamic API configuration with input_number
+# Create these input_number helpers in configuration.yaml:
+# input_number:
+#   temperature_threshold:
+#     name: Temperature Threshold
+#     min: 0
+#     max: 100
+#     step: 0.5
+#     initial: 22
+#     unit_of_measurement: "°C"
+#   api_request_timeout:
+#     name: Request Timeout
+#     min: 5
+#     max: 60
+#     step: 5
+#     initial: 30
+#     unit_of_measurement: "s"
+#
+# Configure HAAPI endpoint with body:
+# {
+#   "threshold": {{ states('input_number.temperature_threshold') | float }},
+#   "timeout": {{ states('input_number.api_request_timeout') | int }}
+# }
+
+automation:
+  - alias: "Update Alert Thresholds"
+    trigger:
+      - platform: state
+        entity_id:
+          - input_number.temperature_threshold
+          - input_number.api_request_timeout
+    action:
+      - service: button.press
+        target:
+          entity_id: button.alert_config_trigger
+
+# Example 10: Dynamic endpoint selection with input_select
+# Create these input_select helpers in configuration.yaml:
+# input_select:
+#   api_environment:
+#     name: API Environment
+#     options:
+#       - production
+#       - staging
+#       - development
+#     initial: production
+#   report_type:
+#     name: Report Type
+#     options:
+#       - daily
+#       - weekly
+#       - monthly
+#     initial: daily
+#
+# Configure HAAPI endpoint:
+# - URL: https://{{ states('input_select.api_environment') }}.api.example.com/reports/{{ states('input_select.report_type') }}
+
+automation:
+  - alias: "Generate Report on Selection"
+    trigger:
+      - platform: state
+        entity_id:
+          - input_select.api_environment
+          - input_select.report_type
+    action:
+      - service: button.press
+        target:
+          entity_id: button.analytics_report_trigger
+
+# Example 11: Conditional API parameters with input_boolean
+# Create this input_boolean in configuration.yaml:
+# input_boolean:
+#   include_debug_info:
+#     name: Include Debug Info
+#     initial: false
+#     icon: mdi:bug
+#
+# Configure HAAPI endpoint with body:
+# {
+#   "status": "{{ states('sensor.system_status') }}"
+#   {% if is_state('input_boolean.include_debug_info', 'on') %}
+#   ,
+#   "debug": {
+#     "uptime": "{{ states('sensor.uptime') }}",
+#     "memory": "{{ states('sensor.memory_use_percent') }}"
+#   }
+#   {% endif %}
+# }
+
+script:
+  send_status_report:
+    alias: "Send Status Report"
+    sequence:
+      - service: button.press
+        target:
+          entity_id: button.status_report_trigger
+      - delay: 2
+      - service: notify.mobile_app
+        data:
+          title: "Status Report Sent"
+          message: >
+            Report sent with{% if is_state('input_boolean.include_debug_info', 'on') %} debug info{% else %}out debug info{% endif %}
+
+# Example 12: Complete search workflow with multiple input helpers
+# Create these input helpers in configuration.yaml:
+# input_text:
+#   search_query:
+#     name: Search Query
+#     initial: ""
+# input_number:
+#   max_results:
+#     name: Max Results
+#     min: 1
+#     max: 100
+#     initial: 10
+# input_select:
+#   search_category:
+#     name: Category
+#     options:
+#       - all
+#       - products
+#       - articles
+#     initial: all
+#
+# Configure HAAPI endpoint:
+# - URL: https://api.example.com/search?q={{ states('input_text.search_query') | urlencode }}&category={{ states('input_select.search_category') }}&limit={{ states('input_number.max_results') | int }}
+
+automation:
+  - alias: "Execute Search"
+    trigger:
+      - platform: state
+        entity_id: input_text.search_query
+    condition:
+      - condition: template
+        value_template: "{{ states('input_text.search_query') | length > 2 }}"
+    action:
+      - delay: 2  # Debounce to avoid rapid API calls while typing
+      - service: button.press
+        target:
+          entity_id: button.search_api_trigger
+
+# Template sensor to display search results
+template:
+  - sensor:
+      - name: "Search Results Count"
+        state: >
+          {% set body = state_attr('sensor.search_api_response', 'response_body') %}
+          {% if body and states('sensor.search_api_response') == '200' %}
+            {{ (body | from_json).results | length }}
+          {% else %}
+            0
+          {% endif %}
+        attributes:
+          query: "{{ states('input_text.search_query') }}"
+          category: "{{ states('input_select.search_category') }}"
+          max_results: "{{ states('input_number.max_results') }}"
+          last_search: "{{ state_attr('sensor.search_api_response', 'last_changed') }}"
