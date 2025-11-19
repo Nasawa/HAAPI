@@ -1,0 +1,130 @@
+{
+  "_comment": "AI-generated translation - Native French speaker review needed. Please submit corrections via PR!",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer HAAPI",
+        "description": "Créer une instance d'intégration HAAPI pour gérer les endpoints d'API REST.",
+        "data": {
+          "name": "Nom"
+        },
+        "data_description": {
+          "name": "Nom pour cette instance HAAPI (par ex., 'APIs de Production', 'APIs de Développement')"
+        }
+      }
+    },
+    "abort": {
+      "no_endpoints": "Aucun endpoint configuré pour le moment. Ajoutez d'abord un endpoint."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Gérer les Endpoints d'API",
+        "menu_options": {
+          "add_endpoint": "Ajouter un Nouvel Endpoint",
+          "edit_endpoint": "Modifier l'Endpoint",
+          "remove_endpoint": "Supprimer l'Endpoint"
+        }
+      },
+      "add_endpoint": {
+        "title": "Ajouter un Endpoint d'API",
+        "description": "Configurez un nouvel endpoint d'API. Vous pouvez utiliser des templates Jinja2 dans les champs URL, en-têtes et corps.",
+        "data": {
+          "endpoint_name": "Nom de l'Endpoint",
+          "url": "URL",
+          "method": "Méthode HTTP",
+          "headers": "En-têtes (un par ligne : 'Clé: Valeur')",
+          "body": "Corps de la Requête",
+          "content_type": "Content-Type"
+        },
+        "data_description": {
+          "endpoint_name": "Un nom unique pour cet endpoint d'API",
+          "url": "L'URL de l'endpoint d'API (supporte les templates Jinja2)",
+          "method": "Méthode HTTP à utiliser",
+          "headers": "En-têtes au format 'Clé: Valeur', un par ligne. Pour plusieurs en-têtes, collez du contenu multiligne (par ex., 'Authorization: Bearer token' sur une ligne, 'Content-Type: application/json' sur la suivante)",
+          "body": "Contenu du corps de la requête. Pour du JSON/XML/texte multiligne, collez votre contenu formaté ici (supporte les templates Jinja2)",
+          "content_type": "En-tête Content-Type pour la requête"
+        }
+      },
+      "add_endpoint_auth": {
+        "title": "Configurer l'Authentification",
+        "description": "Configurer l'authentification pour {endpoint_name}",
+        "data": {
+          "auth_type": "Type d'Authentification",
+          "username": "Nom d'Utilisateur",
+          "password": "Mot de Passe",
+          "bearer_token": "Jeton Bearer",
+          "api_key": "Clé API"
+        },
+        "data_description": {
+          "auth_type": "Type d'authentification à utiliser",
+          "username": "Nom d'utilisateur pour l'authentification basique",
+          "password": "Mot de passe pour l'authentification basique",
+          "bearer_token": "Jeton pour l'authentification Bearer",
+          "api_key": "Clé API pour l'authentification par clé API (envoyée comme en-tête X-API-Key)"
+        }
+      },
+      "edit_endpoint": {
+        "title": "Sélectionner l'Endpoint à Modifier",
+        "data": {
+          "endpoint": "Endpoint"
+        },
+        "data_description": {
+          "endpoint": "Sélectionnez l'endpoint à modifier"
+        }
+      },
+      "edit_endpoint_config": {
+        "title": "Modifier la Configuration de l'Endpoint",
+        "description": "Mettez à jour la configuration de l'endpoint. Vous pouvez utiliser des templates Jinja2 dans les champs URL, en-têtes et corps.",
+        "data": {
+          "endpoint_name": "Nom de l'Endpoint",
+          "url": "URL",
+          "method": "Méthode HTTP",
+          "headers": "En-têtes (un par ligne : 'Clé: Valeur')",
+          "body": "Corps de la Requête",
+          "content_type": "Content-Type"
+        },
+        "data_description": {
+          "endpoint_name": "Un nom unique pour cet endpoint d'API",
+          "url": "L'URL de l'endpoint d'API (supporte les templates Jinja2)",
+          "method": "Méthode HTTP à utiliser",
+          "headers": "En-têtes au format 'Clé: Valeur', un par ligne. Pour plusieurs en-têtes, collez du contenu multiligne (par ex., 'Authorization: Bearer token' sur une ligne, 'Content-Type: application/json' sur la suivante)",
+          "body": "Contenu du corps de la requête. Pour du JSON/XML/texte multiligne, collez votre contenu formaté ici (supporte les templates Jinja2)",
+          "content_type": "En-tête Content-Type pour la requête"
+        }
+      },
+      "edit_endpoint_auth": {
+        "title": "Modifier l'Authentification",
+        "description": "Mettre à jour l'authentification pour {endpoint_name}",
+        "data": {
+          "auth_type": "Type d'Authentification",
+          "username": "Nom d'Utilisateur",
+          "password": "Mot de Passe",
+          "bearer_token": "Jeton Bearer",
+          "api_key": "Clé API"
+        },
+        "data_description": {
+          "auth_type": "Type d'authentification à utiliser",
+          "username": "Nom d'utilisateur pour l'authentification basique",
+          "password": "Mot de passe pour l'authentification basique",
+          "bearer_token": "Jeton pour l'authentification Bearer",
+          "api_key": "Clé API pour l'authentification par clé API (envoyée comme en-tête X-API-Key)"
+        }
+      },
+      "remove_endpoint": {
+        "title": "Supprimer l'Endpoint",
+        "description": "Sélectionnez l'endpoint à supprimer",
+        "data": {
+          "endpoint": "Endpoint"
+        },
+        "data_description": {
+          "endpoint": "Sélectionnez l'endpoint à supprimer"
+        }
+      }
+    },
+    "abort": {
+      "no_endpoints": "Aucun endpoint configuré pour le moment. Ajoutez d'abord un endpoint."
+    }
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "_comment": "AI-generated translation - Native German speaker review needed. Please submit corrections via PR!",
+  "config": {
+    "step": {
+      "user": {
+        "title": "HAAPI einrichten",
+        "description": "Erstellen Sie eine HAAPI-Integrationsinstanz zur Verwaltung von REST-API-Endpunkten.",
+        "data": {
+          "name": "Name"
+        },
+        "data_description": {
+          "name": "Name für diese HAAPI-Instanz (z.B. 'Produktions-APIs', 'Entwicklungs-APIs')"
+        }
+      }
+    },
+    "abort": {
+      "no_endpoints": "Noch keine Endpunkte konfiguriert. Fügen Sie zuerst einen Endpunkt hinzu."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "API-Endpunkte verwalten",
+        "menu_options": {
+          "add_endpoint": "Neuen Endpunkt hinzufügen",
+          "edit_endpoint": "Endpunkt bearbeiten",
+          "remove_endpoint": "Endpunkt entfernen"
+        }
+      },
+      "add_endpoint": {
+        "title": "API-Endpunkt hinzufügen",
+        "description": "Konfigurieren Sie einen neuen API-Endpunkt. Sie können Jinja2-Vorlagen in den Feldern URL, Header und Body verwenden.",
+        "data": {
+          "endpoint_name": "Endpunktname",
+          "url": "URL",
+          "method": "HTTP-Methode",
+          "headers": "Header (einer pro Zeile: 'Schlüssel: Wert')",
+          "body": "Anfrage-Body",
+          "content_type": "Content-Type"
+        },
+        "data_description": {
+          "endpoint_name": "Ein eindeutiger Name für diesen API-Endpunkt",
+          "url": "Die API-Endpunkt-URL (unterstützt Jinja2-Vorlagen)",
+          "method": "Zu verwendende HTTP-Methode",
+          "headers": "Header im Format 'Schlüssel: Wert', einer pro Zeile. Für mehrere Header fügen Sie mehrzeiligen Inhalt ein (z.B. 'Authorization: Bearer token' in einer Zeile, 'Content-Type: application/json' in der nächsten)",
+          "body": "Inhalt des Anfrage-Bodys. Für mehrzeiligen JSON/XML/Text fügen Sie Ihren formatierten Inhalt hier ein (unterstützt Jinja2-Vorlagen)",
+          "content_type": "Content-Type-Header für die Anfrage"
+        }
+      },
+      "add_endpoint_auth": {
+        "title": "Authentifizierung konfigurieren",
+        "description": "Authentifizierung für {endpoint_name} konfigurieren",
+        "data": {
+          "auth_type": "Authentifizierungstyp",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "bearer_token": "Bearer-Token",
+          "api_key": "API-Schlüssel"
+        },
+        "data_description": {
+          "auth_type": "Zu verwendender Authentifizierungstyp",
+          "username": "Benutzername für Basic-Authentifizierung",
+          "password": "Passwort für Basic-Authentifizierung",
+          "bearer_token": "Token für Bearer-Authentifizierung",
+          "api_key": "API-Schlüssel für API-Schlüssel-Authentifizierung (wird als X-API-Key-Header gesendet)"
+        }
+      },
+      "edit_endpoint": {
+        "title": "Endpunkt zum Bearbeiten auswählen",
+        "data": {
+          "endpoint": "Endpunkt"
+        },
+        "data_description": {
+          "endpoint": "Wählen Sie den zu bearbeitenden Endpunkt aus"
+        }
+      },
+      "edit_endpoint_config": {
+        "title": "Endpunktkonfiguration bearbeiten",
+        "description": "Aktualisieren Sie die Endpunktkonfiguration. Sie können Jinja2-Vorlagen in den Feldern URL, Header und Body verwenden.",
+        "data": {
+          "endpoint_name": "Endpunktname",
+          "url": "URL",
+          "method": "HTTP-Methode",
+          "headers": "Header (einer pro Zeile: 'Schlüssel: Wert')",
+          "body": "Anfrage-Body",
+          "content_type": "Content-Type"
+        },
+        "data_description": {
+          "endpoint_name": "Ein eindeutiger Name für diesen API-Endpunkt",
+          "url": "Die API-Endpunkt-URL (unterstützt Jinja2-Vorlagen)",
+          "method": "Zu verwendende HTTP-Methode",
+          "headers": "Header im Format 'Schlüssel: Wert', einer pro Zeile. Für mehrere Header fügen Sie mehrzeiligen Inhalt ein (z.B. 'Authorization: Bearer token' in einer Zeile, 'Content-Type: application/json' in der nächsten)",
+          "body": "Inhalt des Anfrage-Bodys. Für mehrzeiligen JSON/XML/Text fügen Sie Ihren formatierten Inhalt hier ein (unterstützt Jinja2-Vorlagen)",
+          "content_type": "Content-Type-Header für die Anfrage"
+        }
+      },
+      "edit_endpoint_auth": {
+        "title": "Authentifizierung bearbeiten",
+        "description": "Authentifizierung für {endpoint_name} aktualisieren",
+        "data": {
+          "auth_type": "Authentifizierungstyp",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "bearer_token": "Bearer-Token",
+          "api_key": "API-Schlüssel"
+        },
+        "data_description": {
+          "auth_type": "Zu verwendender Authentifizierungstyp",
+          "username": "Benutzername für Basic-Authentifizierung",
+          "password": "Passwort für Basic-Authentifizierung",
+          "bearer_token": "Token für Bearer-Authentifizierung",
+          "api_key": "API-Schlüssel für API-Schlüssel-Authentifizierung (wird als X-API-Key-Header gesendet)"
+        }
+      },
+      "remove_endpoint": {
+        "title": "Endpunkt entfernen",
+        "description": "Wählen Sie den zu entfernenden Endpunkt aus",
+        "data": {
+          "endpoint": "Endpunkt"
+        },
+        "data_description": {
+          "endpoint": "Wählen Sie den zu entfernenden Endpunkt aus"
+        }
+      }
+    },
+    "abort": {
+      "no_endpoints": "Noch keine Endpunkte konfiguriert. Fügen Sie zuerst einen Endpunkt hinzu."
+    }
+  }
+}
