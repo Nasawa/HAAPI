@@ -58,6 +58,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - **Headers**: Optional headers in `Key: Value` format, one per line
 - **Body**: Optional request body (for POST/PUT/PATCH)
 - **Content-Type**: Content type for the request (default: `application/json`)
+- **Timeout**: Request timeout in seconds (1-300, default: 10)
 
 ### Step 2: Authentication
 
@@ -82,6 +83,7 @@ Each configured endpoint creates a device with the following entities:
   - `request_headers`: Configured headers (raw, non-templated)
   - `request_body`: Configured body (raw, non-templated)
   - `content_type`: Content-Type header
+  - `timeout`: Configured timeout in seconds
 
 ### 3. Sensor: `{endpoint_name} Response`
 - **State**: HTTP status code (200, 404, 500, etc.)

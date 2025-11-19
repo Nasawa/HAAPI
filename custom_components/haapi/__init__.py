@@ -34,9 +34,11 @@ from .const import (
     CONF_BEARER_TOKEN,
     CONF_API_KEY,
     CONF_AUTH_TYPE,
+    CONF_TIMEOUT,
     AUTH_BASIC,
     AUTH_BEARER,
     AUTH_API_KEY,
+    DEFAULT_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -269,10 +271,13 @@ class HaapiApiCaller:
                     "Basic Auth selected but username or password is missing"
                 )
 
-        _LOGGER.debug("Calling API: %s %s", method, url)
+        # Get timeout from config
+        timeout = self.endpoint_config.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+
+        _LOGGER.debug("Calling API: %s %s (timeout: %ss)", method, url, timeout)
 
         try:
-            async with async_timeout.timeout(30):
+            async with async_timeout.timeout(timeout):
                 async with aiohttp.ClientSession() as session:
                     async with session.request(
                         method=method,

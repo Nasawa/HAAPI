@@ -35,7 +35,8 @@
           "method": "HTTP Method",
           "headers": "Headers (one per line: 'Key: Value')",
           "body": "Request Body",
-          "content_type": "Content-Type"
+          "content_type": "Content-Type",
+          "timeout": "Timeout (seconds)"
         },
         "data_description": {
           "endpoint_name": "A unique name for this API endpoint",
@@ -43,7 +44,8 @@
           "method": "HTTP method to use",
           "headers": "Headers in 'Key: Value' format, one per line. For multiple headers, paste multiline content (e.g., 'Authorization: Bearer token' on one line, 'Content-Type: application/json' on the next)",
           "body": "Request body content. For multiline JSON/XML/text, paste your formatted content here (supports Jinja2 templates)",
-          "content_type": "Content-Type header for the request"
+          "content_type": "Content-Type header for the request",
+          "timeout": "Request timeout in seconds (1-300). Default is 10 seconds"
         }
       },
       "add_endpoint_auth": {
@@ -82,7 +84,8 @@
           "method": "HTTP Method",
           "headers": "Headers (one per line: 'Key: Value')",
           "body": "Request Body",
-          "content_type": "Content-Type"
+          "content_type": "Content-Type",
+          "timeout": "Timeout (seconds)"
         },
         "data_description": {
           "endpoint_name": "A unique name for this API endpoint",
@@ -90,7 +93,8 @@
           "method": "HTTP method to use",
           "headers": "Headers in 'Key: Value' format, one per line. For multiple headers, paste multiline content (e.g., 'Authorization: Bearer token' on one line, 'Content-Type: application/json' on the next)",
           "body": "Request body content. For multiline JSON/XML/text, paste your formatted content here (supports Jinja2 templates)",
-          "content_type": "Content-Type header for the request"
+          "content_type": "Content-Type header for the request",
+          "timeout": "Request timeout in seconds (1-300). Default is 10 seconds"
         }
       },
       "edit_endpoint_auth": {

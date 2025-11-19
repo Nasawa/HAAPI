@@ -29,11 +29,13 @@ from .const import (
     CONF_BEARER_TOKEN,
     CONF_API_KEY,
     CONF_AUTH_TYPE,
+    CONF_TIMEOUT,
     HTTP_METHODS,
     AUTH_TYPES,
     DEFAULT_METHOD,
     DEFAULT_CONTENT_TYPE,
     DEFAULT_AUTH_TYPE,
+    DEFAULT_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -124,6 +126,9 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
                     )
                 ),
                 vol.Optional(CONF_CONTENT_TYPE, default=DEFAULT_CONTENT_TYPE): cv.string,
+                vol.Optional(CONF_TIMEOUT, default=DEFAULT_TIMEOUT): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=300)
+                ),
             }
         )
 
@@ -249,6 +254,12 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_CONTENT_TYPE,
                     default=self._endpoint_data.get(CONF_CONTENT_TYPE, DEFAULT_CONTENT_TYPE)
                 ): cv.string,
+                vol.Optional(
+                    CONF_TIMEOUT,
+                    default=self._endpoint_data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+                ): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=300)
+                ),
             }
         )
 

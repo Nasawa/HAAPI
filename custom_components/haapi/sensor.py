@@ -20,12 +20,15 @@ from .const import (
     CONF_HEADERS,
     CONF_BODY,
     CONF_CONTENT_TYPE,
+    CONF_TIMEOUT,
     ATTR_RESPONSE_BODY,
     ATTR_RESPONSE_HEADERS,
     ATTR_REQUEST_HEADERS,
     ATTR_REQUEST_BODY,
     ATTR_URL,
     ATTR_CONTENT_TYPE,
+    ATTR_TIMEOUT,
+    DEFAULT_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -116,6 +119,9 @@ class HaapiRequestSensor(HaapiBaseSensor):
         # Add content type
         if CONF_CONTENT_TYPE in self._endpoint_config and self._endpoint_config[CONF_CONTENT_TYPE]:
             attrs[ATTR_CONTENT_TYPE] = self._endpoint_config[CONF_CONTENT_TYPE]
+
+        # Add timeout
+        attrs[ATTR_TIMEOUT] = self._endpoint_config.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
 
         return attrs
 
