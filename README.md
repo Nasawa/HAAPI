@@ -35,7 +35,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 
 ### Step 1: Basic Configuration
 
-- **Endpoint Name**: A unique identifier for this endpoint (e.g., "Chuck Norris Jokes")
+- **Endpoint Name**: A unique identifier for this endpoint (e.g., "Cat Facts")
 - **URL**: The API endpoint URL (supports Jinja2 templates)
 - **HTTP Method**: GET, POST, PUT, DELETE, or PATCH
 - **Headers**: Optional headers in `Key: Value` format, one per line
@@ -58,53 +58,53 @@ Each configured endpoint creates a device with the following entities:
 ### 1. Button: `{endpoint_name} Trigger`
 - Press this button to trigger the API call
 
-### 2. Sensor: `{endpoint_name} Response Code`
-- **State**: HTTP status code (200, 404, 500, etc.)
+### 2. Sensor: `{endpoint_name} Request`
+- **State**: HTTP method (GET, POST, PUT, DELETE, PATCH)
 - **Attributes**:
-  - `url`: The configured URL
-  - `method`: The HTTP method used
+  - `url`: The configured URL (with templates)
+  - `request_headers`: Configured headers (raw, non-templated)
+  - `request_body`: Configured body (raw, non-templated)
+  - `content_type`: Content-Type header
 
-### 3. Sensor: `{endpoint_name} Last Fetch Time`
-- **State**: Timestamp of the last API call
-- **Device Class**: timestamp
-
-### 4. Sensor: `{endpoint_name} Response Body`
-- **State**: Timestamp of last fetch (to avoid state size limits)
+### 3. Sensor: `{endpoint_name} Response`
+- **State**: HTTP status code (200, 404, 500, etc.)
 - **Attributes**:
   - `response_body`: Full response body content
   - `response_headers`: Response headers as a dictionary
 
+*Note: Home Assistant automatically tracks when sensor states change via `last_changed` and `last_updated` attributes.*
+
 ## Usage Examples
 
-### Example 1: Chuck Norris Jokes API
+### Example 1: Cat Facts API
 
 **Configuration:**
-- Endpoint Name: `Chuck Norris Jokes`
-- URL: `https://api.chucknorris.io/jokes/random`
+- Endpoint Name: `Cat Facts`
+- URL: `https://catfact.ninja/fact`
 - Method: `GET`
 - Auth Type: `none`
 
 **Usage:**
-1. Press the "Chuck Norris Jokes Trigger" button
-2. Check "Chuck Norris Jokes Response Code" sensor (should be 200)
-3. View the joke in "Chuck Norris Jokes Response Body" attributes
+1. Press the "Cat Facts Trigger" button
+2. Check "Cat Facts Response" sensor (should be 200)
+3. View the cat fact in "Cat Facts Response" attributes
 
 **Automation Example:**
 ```yaml
 automation:
-  - alias: "Daily Chuck Norris Joke"
+  - alias: "Daily Cat Fact"
     trigger:
       - platform: time
         at: "09:00:00"
     action:
       - service: button.press
         target:
-          entity_id: button.chuck_norris_jokes_trigger
+          entity_id: button.cat_facts_trigger
       - delay: 2
       - service: notify.mobile_app
         data:
           message: >
-            {{ state_attr('sensor.chuck_norris_jokes_response_body', 'response_body') }}
+            {{ (state_attr('sensor.cat_facts_response', 'response_body') | from_json).fact }}
 ```
 
 ### Example 2: POST with Template
@@ -157,9 +157,9 @@ HAAPI stores raw response bodies. To parse JSON responses, create template senso
 ```yaml
 template:
   - sensor:
-      - name: "Chuck Norris Joke Text"
+      - name: "Cat Fact Text"
         state: >
-          {{ state_attr('sensor.chuck_norris_jokes_response_body', 'response_body') | from_json | attr('value') }}
+          {{ (state_attr('sensor.cat_facts_response', 'response_body') | from_json).fact }}
 ```
 
 ## Troubleshooting
@@ -302,4 +302,4 @@ This project is licensed under the MIT License.
 
 Created for Home Assistant 2025.11+
 
-Tested with [Chuck Norris Jokes API](https://api.chucknorris.io/)
+Tested with [Cat Facts API](https://catfact.ninja/)

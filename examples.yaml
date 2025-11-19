@@ -3,18 +3,18 @@
 
 # Example 1: Trigger API call on button press
 automation:
-  - alias: "Fetch Chuck Norris Joke on Button Press"
+  - alias: "Fetch Cat Fact on Button Press"
     trigger:
       - platform: state
-        entity_id: input_boolean.get_joke
+        entity_id: input_boolean.get_fact
         to: "on"
     action:
       - service: button.press
         target:
-          entity_id: button.chuck_norris_jokes_trigger
+          entity_id: button.cat_facts_trigger
       - service: input_boolean.turn_off
         target:
-          entity_id: input_boolean.get_joke
+          entity_id: input_boolean.get_fact
 
 # Example 2: Daily scheduled API call
 automation:
@@ -32,10 +32,10 @@ automation:
   - alias: "Retry API on Error"
     trigger:
       - platform: state
-        entity_id: sensor.my_api_response_code
+        entity_id: sensor.my_api_response
     condition:
       - condition: template
-        value_template: "{{ states('sensor.my_api_response_code') | int >= 400 }}"
+        value_template: "{{ states('sensor.my_api_response') | int >= 400 }}"
     action:
       - delay: "00:01:00"
       - service: button.press
@@ -44,52 +44,51 @@ automation:
 
 # Example 4: Parse JSON response and send notification
 automation:
-  - alias: "Chuck Norris Joke Notification"
+  - alias: "Cat Fact Notification"
     trigger:
       - platform: state
-        entity_id: sensor.chuck_norris_jokes_response_body
+        entity_id: sensor.cat_facts_response
     condition:
       - condition: template
-        value_template: "{{ states('sensor.chuck_norris_jokes_response_code') == '200' }}"
+        value_template: "{{ states('sensor.cat_facts_response') == '200' }}"
     action:
       - service: notify.mobile_app
         data:
-          title: "Chuck Norris Fact"
+          title: "Cat Fact"
           message: >
-            {{ (state_attr('sensor.chuck_norris_jokes_response_body', 'response_body') | from_json).value }}
+            {{ (state_attr('sensor.cat_facts_response', 'response_body') | from_json).fact }}
 
 # Example 5: Template sensor to extract JSON data
 template:
   - sensor:
       - name: "API Response Status"
         state: >
-          {% if states('sensor.my_api_response_code') | int == 200 %}
+          {% if states('sensor.my_api_response') | int == 200 %}
             Success
-          {% elif states('sensor.my_api_response_code') | int >= 400 %}
+          {% elif states('sensor.my_api_response') | int >= 400 %}
             Error
           {% else %}
             Unknown
           {% endif %}
         icon: >
-          {% if states('sensor.my_api_response_code') | int == 200 %}
+          {% if states('sensor.my_api_response') | int == 200 %}
             mdi:check-circle
           {% else %}
             mdi:alert-circle
           {% endif %}
 
-      - name: "Chuck Norris Joke"
+      - name: "Cat Fact"
         state: >
-          {% set body = state_attr('sensor.chuck_norris_jokes_response_body', 'response_body') %}
+          {% set body = state_attr('sensor.cat_facts_response', 'response_body') %}
           {% if body %}
-            {{ (body | from_json).value }}
+            {{ (body | from_json).fact }}
           {% else %}
-            No joke available
+            No fact available
           {% endif %}
 
       - name: "API Last Call"
         state: >
-          {{ relative_time(states('sensor.my_api_fetch_time')) }} ago
-        device_class: timestamp
+          {{ relative_time(as_datetime(state_attr('sensor.my_api_response', 'last_changed'))) }} ago
 
 # Example 6: Script to call API with delay and check result
 script:
@@ -103,7 +102,7 @@ script:
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ states('sensor.my_api_response_code') == '200' }}"
+                value_template: "{{ states('sensor.my_api_response') == '200' }}"
             sequence:
               - service: notify.persistent_notification
                 data:
@@ -114,7 +113,7 @@ script:
             data:
               title: "API Failed"
               message: >
-                API call failed with code {{ states('sensor.my_api_response_code') }}
+                API call failed with code {{ states('sensor.my_api_response') }}
 
 # Example 7: Call API when sensor value changes
 automation:

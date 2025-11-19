@@ -23,7 +23,7 @@ A universal API integration framework for Home Assistant where each "device" rep
 
 Each endpoint creates:
 - 1 Button (to trigger the API call)
-- 3 Sensors (response code, fetch time, response body with headers)
+- 2 Sensors (request configuration, response data)
 
 ## Example Use Cases
 
@@ -35,18 +35,18 @@ Each endpoint creates:
 
 ## Getting Started Example
 
-Try the Chuck Norris Jokes API:
-- **URL**: `https://api.chucknorris.io/jokes/random`
+Try the Cat Facts API:
+- **URL**: `https://catfact.ninja/fact`
 - **Method**: GET
 - **Auth**: None
 
-Then create a template sensor to display the joke:
+Then create a template sensor to display the fact:
 ```yaml
 template:
   - sensor:
-      - name: "Chuck Norris Joke"
+      - name: "Cat Fact"
         state: >
-          {{ (state_attr('sensor.chuck_norris_jokes_response_body', 'response_body') | from_json).value }}
+          {{ (state_attr('sensor.cat_facts_response', 'response_body') | from_json).fact }}
 ```
 
 ## Documentation
