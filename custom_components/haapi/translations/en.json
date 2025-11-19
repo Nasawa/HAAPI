@@ -3,11 +3,16 @@
     "step": {
       "user": {
         "title": "Set up HAAPI",
-        "description": "HAAPI allows you to integrate REST APIs into Home Assistant.\n\nAfter setup, add endpoints through the integration's Configure option."
+        "description": "Create a HAAPI integration instance to manage REST API endpoints.",
+        "data": {
+          "name": "Name"
+        },
+        "data_description": {
+          "name": "Name for this HAAPI instance (e.g., 'Production APIs', 'Dev APIs')"
+        }
       }
     },
     "abort": {
-      "single_instance_allowed": "Only a single HAAPI integration instance is allowed.",
       "no_endpoints": "No endpoints configured yet. Add an endpoint first."
     }
   },

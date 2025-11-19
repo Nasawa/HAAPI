@@ -11,7 +11,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import selector
+from homeassistant.helpers import selector, entity_registry as er
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
@@ -52,23 +52,22 @@ class HaapiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step - create HAAPI integration."""
-        # Check if HAAPI is already configured
-        if self._async_current_entries():
-            return self.async_abort(reason="single_instance_allowed")
-
         if user_input is not None:
-            # Create entry with no endpoints initially
+            # Create entry with user-provided name
+            title = user_input.get("name", "HAAPI")
             return self.async_create_entry(
-                title="HAAPI",
+                title=title,
                 data={},
                 options={CONF_ENDPOINTS: []},
             )
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({}),
+            data_schema=vol.Schema({
+                vol.Optional("name", default="HAAPI"): cv.string,
+            }),
             description_placeholders={
-                "info": "HAAPI allows you to integrate REST APIs into Home Assistant. After setup, add endpoints through the integration's options."
+                "info": "Create a HAAPI integration instance to manage REST API endpoints."
             },
         )
 
@@ -310,7 +309,23 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             endpoint_id_to_remove = user_input["endpoint"]
 
-            # Remove the endpoint
+            # Remove all entities associated with this endpoint
+            entity_registry = er.async_get(self.hass)
+            entries = er.async_entries_for_config_entry(
+                entity_registry, self.config_entry.entry_id
+            )
+
+            # Find and remove entities for this endpoint
+            for entity_entry in entries:
+                if endpoint_id_to_remove in entity_entry.unique_id:
+                    entity_registry.async_remove(entity_entry.entity_id)
+                    _LOGGER.debug(
+                        "Removed entity %s for endpoint %s",
+                        entity_entry.entity_id,
+                        endpoint_id_to_remove,
+                    )
+
+            # Remove the endpoint from options
             endpoints = [
                 ep for ep in endpoints
                 if ep[CONF_ENDPOINT_ID] != endpoint_id_to_remove
