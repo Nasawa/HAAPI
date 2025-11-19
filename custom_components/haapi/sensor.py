@@ -3,14 +3,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import Any
 
-from homeassistant.components.sensor import (
-    SensorEntity,
-    SensorDeviceClass,
-    SensorStateClass,
-)
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -23,12 +18,14 @@ from .const import (
     CONF_METHOD,
     CONF_HEADERS,
     CONF_BODY,
+    CONF_CONTENT_TYPE,
     ATTR_RESPONSE_BODY,
     ATTR_RESPONSE_HEADERS,
     ATTR_REQUEST_HEADERS,
     ATTR_REQUEST_BODY,
     ATTR_URL,
     ATTR_METHOD,
+    ATTR_CONTENT_TYPE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,9 +40,8 @@ async def async_setup_entry(
     api_caller = hass.data[DOMAIN][entry.entry_id]
 
     sensors = [
-        HaapiResponseCodeSensor(api_caller, entry),
-        HaapiFetchTimeSensor(api_caller, entry),
-        HaapiResponseBodySensor(api_caller, entry),
+        HaapiRequestSensor(api_caller, entry),
+        HaapiResponseSensor(api_caller, entry),
     ]
 
     async_add_entities(sensors, True)
@@ -78,77 +74,63 @@ class HaapiBaseSensor(SensorEntity):
         self.async_write_ha_state()
 
 
-class HaapiResponseCodeSensor(HaapiBaseSensor):
-    """Sensor for API response code."""
+class HaapiRequestSensor(HaapiBaseSensor):
+    """Sensor for API request configuration."""
 
     def __init__(self, api_caller, entry: ConfigEntry) -> None:
-        """Initialize the response code sensor."""
+        """Initialize the request sensor."""
         super().__init__(api_caller, entry)
-        self._attr_name = "Response Code"
-        self._attr_unique_id = f"{entry.entry_id}_response_code"
+        self._attr_name = "Request"
+        self._attr_unique_id = f"{entry.entry_id}_request"
         self._attr_has_entity_name = True
-        self._attr_icon = "mdi:code-brackets"
+        self._attr_icon = "mdi:send"
 
     @property
-    def native_value(self) -> int | None:
-        """Return the state of the sensor."""
-        return self._api_caller.last_response_code
+    def native_value(self) -> str | None:
+        """Return the HTTP method as state."""
+        return self._entry.data[CONF_METHOD]
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional attributes."""
+        """Return request configuration as attributes."""
         attrs = {
             ATTR_URL: self._entry.data[CONF_URL],
-            ATTR_METHOD: self._entry.data[CONF_METHOD],
         }
 
-        # Add raw request headers and body (non-templated)
+        # Add raw request headers (non-templated)
         if CONF_HEADERS in self._entry.data and self._entry.data[CONF_HEADERS]:
             attrs[ATTR_REQUEST_HEADERS] = self._entry.data[CONF_HEADERS]
 
+        # Add raw request body (non-templated)
         if CONF_BODY in self._entry.data and self._entry.data[CONF_BODY]:
             attrs[ATTR_REQUEST_BODY] = self._entry.data[CONF_BODY]
+
+        # Add content type
+        if CONF_CONTENT_TYPE in self._entry.data and self._entry.data[CONF_CONTENT_TYPE]:
+            attrs[ATTR_CONTENT_TYPE] = self._entry.data[CONF_CONTENT_TYPE]
 
         return attrs
 
 
-class HaapiFetchTimeSensor(HaapiBaseSensor):
-    """Sensor for last fetch time."""
+class HaapiResponseSensor(HaapiBaseSensor):
+    """Sensor for API response."""
 
     def __init__(self, api_caller, entry: ConfigEntry) -> None:
-        """Initialize the fetch time sensor."""
+        """Initialize the response sensor."""
         super().__init__(api_caller, entry)
-        self._attr_name = "Last Fetch Time"
-        self._attr_unique_id = f"{entry.entry_id}_fetch_time"
+        self._attr_name = "Response"
+        self._attr_unique_id = f"{entry.entry_id}_response"
         self._attr_has_entity_name = True
-        self._attr_device_class = SensorDeviceClass.TIMESTAMP
-        self._attr_icon = "mdi:clock-outline"
+        self._attr_icon = "mdi:receipt-text"
 
     @property
-    def native_value(self) -> datetime | None:
-        """Return the state of the sensor."""
-        return self._api_caller.last_fetch_time
-
-
-class HaapiResponseBodySensor(HaapiBaseSensor):
-    """Sensor for API response body."""
-
-    def __init__(self, api_caller, entry: ConfigEntry) -> None:
-        """Initialize the response body sensor."""
-        super().__init__(api_caller, entry)
-        self._attr_name = "Response Body"
-        self._attr_unique_id = f"{entry.entry_id}_response_body"
-        self._attr_has_entity_name = True
-        self._attr_icon = "mdi:file-document-outline"
-
-    @property
-    def native_value(self) -> datetime | None:
-        """Return the fetch time as state (to avoid size limits)."""
-        return self._api_caller.last_fetch_time
+    def native_value(self) -> int | None:
+        """Return the HTTP status code as state."""
+        return self._api_caller.last_response_code
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the response body and headers as attributes."""
+        """Return response data as attributes."""
         attrs = {}
 
         if self._api_caller.last_response_body is not None:

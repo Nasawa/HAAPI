@@ -31,9 +31,8 @@ DEFAULT_CONTENT_TYPE = "application/json"
 DEFAULT_AUTH_TYPE = AUTH_NONE
 
 # Entity types
-SENSOR_RESPONSE_CODE = "response_code"
-SENSOR_FETCH_TIME = "fetch_time"
-SENSOR_RESPONSE_BODY = "response_body"
+SENSOR_REQUEST = "request"
+SENSOR_RESPONSE = "response"
 
 # Attributes
 ATTR_RESPONSE_BODY = "response_body"
@@ -42,3 +41,4 @@ ATTR_REQUEST_HEADERS = "request_headers"
 ATTR_REQUEST_BODY = "request_body"
 ATTR_URL = "url"
 ATTR_METHOD = "method"
+ATTR_CONTENT_TYPE = "content_type"
