@@ -36,7 +36,9 @@
           "method": "Método HTTP",
           "headers": "Encabezados (uno por línea: 'Clave: Valor')",
           "body": "Cuerpo de la Solicitud",
-          "content_type": "Content-Type"
+          "content_type": "Content-Type",
+          "timeout": "Tiempo de espera (segundos)",
+          "verify_ssl": "Verificar Certificado SSL"
         },
         "data_description": {
           "endpoint_name": "Un nombre único para este endpoint de API",
@@ -44,7 +46,9 @@
           "method": "Método HTTP a usar",
           "headers": "Encabezados en formato 'Clave: Valor', uno por línea. Para múltiples encabezados, pegue contenido multilínea (ej., 'Authorization: Bearer token' en una línea, 'Content-Type: application/json' en la siguiente)",
           "body": "Contenido del cuerpo de la solicitud. Para JSON/XML/texto multilínea, pegue su contenido formateado aquí (soporta plantillas Jinja2)",
-          "content_type": "Encabezado Content-Type para la solicitud"
+          "content_type": "Encabezado Content-Type para la solicitud",
+          "timeout": "Tiempo de espera de la solicitud en segundos (1-300). Por defecto es 10 segundos",
+          "verify_ssl": "Verificar certificados SSL. Deshabilitar solo para certificados autofirmados (no recomendado para producción)"
         }
       },
       "add_endpoint_auth": {
@@ -83,7 +87,9 @@
           "method": "Método HTTP",
           "headers": "Encabezados (uno por línea: 'Clave: Valor')",
           "body": "Cuerpo de la Solicitud",
-          "content_type": "Content-Type"
+          "content_type": "Content-Type",
+          "timeout": "Tiempo de espera (segundos)",
+          "verify_ssl": "Verificar Certificado SSL"
         },
         "data_description": {
           "endpoint_name": "Un nombre único para este endpoint de API",
@@ -91,7 +97,9 @@
           "method": "Método HTTP a usar",
           "headers": "Encabezados en formato 'Clave: Valor', uno por línea. Para múltiples encabezados, pegue contenido multilínea (ej., 'Authorization: Bearer token' en una línea, 'Content-Type: application/json' en la siguiente)",
           "body": "Contenido del cuerpo de la solicitud. Para JSON/XML/texto multilínea, pegue su contenido formateado aquí (soporta plantillas Jinja2)",
-          "content_type": "Encabezado Content-Type para la solicitud"
+          "content_type": "Encabezado Content-Type para la solicitud",
+          "timeout": "Tiempo de espera de la solicitud en segundos (1-300). Por defecto es 10 segundos",
+          "verify_ssl": "Verificar certificados SSL. Deshabilitar solo para certificados autofirmados (no recomendado para producción)"
         }
       },
       "edit_endpoint_auth": {

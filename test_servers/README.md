@@ -92,6 +92,49 @@ Authentication Type: API Key
 API Key: test-api-key-67890
 ```
 
+### 3. HTTPS Server (Port 5002)
+
+Tests SSL certificate verification with a self-signed certificate.
+
+**Start the server:**
+```bash
+python https_server.py
+```
+
+**Important:** This server uses a **self-signed SSL certificate** that will cause certificate verification errors by default. Use this to test HAAPI's `verify_ssl` configuration option.
+
+**Endpoints:**
+
+Same as Echo Server but on HTTPS:
+- `GET/POST/PUT/DELETE/PATCH https://localhost:5002/` - Echo all request details
+- `GET/POST/PUT/DELETE/PATCH https://localhost:5002/<any-path>` - Echo with custom path
+- `GET https://localhost:5002/status/<code>` - Return specific HTTP status code
+- `GET https://localhost:5002/delay/<seconds>` - Delay response (max 30 seconds)
+- `GET https://localhost:5002/json` - Return sample JSON data
+
+**Example HAAPI Configuration:**
+
+**With SSL Verification (Default - Will Fail):**
+```yaml
+Endpoint Name: HTTPS Test (Will Fail)
+URL: https://localhost:5002/
+Method: GET
+Verify SSL Certificate: Yes  # ✗ This will fail with self-signed cert
+```
+
+**With SSL Verification Disabled (Will Succeed):**
+```yaml
+Endpoint Name: HTTPS Test (Will Work)
+URL: https://localhost:5002/
+Method: GET
+Verify SSL Certificate: No  # ✓ This will work but shows warning
+```
+
+**Expected Behavior:**
+- When `Verify SSL Certificate` is enabled: Request will fail with SSL error
+- When `Verify SSL Certificate` is disabled: Request succeeds, warning appears in HA logs
+- Use this to test SSL handling in internal/development environments
+
 ## Testing with HAAPI
 
 1. Start one or both servers
@@ -171,3 +214,9 @@ http://localhost:5000/status/401  (Unauthorized)
 - Ensure proper Jinja2 syntax
 - Check Home Assistant logs for template errors
 - Test templates in Developer Tools → Template first
+
+**SSL Certificate Errors (HTTPS Server):**
+- Expected behavior with self-signed certificates
+- Set `Verify SSL Certificate` to `No` in HAAPI configuration
+- Check Home Assistant logs for SSL verification warning
+- For production: Use proper CA-signed certificates and keep SSL verification enabled

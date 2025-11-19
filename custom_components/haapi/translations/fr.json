@@ -36,7 +36,9 @@
           "method": "Méthode HTTP",
           "headers": "En-têtes (un par ligne : 'Clé: Valeur')",
           "body": "Corps de la Requête",
-          "content_type": "Content-Type"
+          "content_type": "Content-Type",
+          "timeout": "Délai d'expiration (secondes)",
+          "verify_ssl": "Vérifier le Certificat SSL"
         },
         "data_description": {
           "endpoint_name": "Un nom unique pour cet endpoint d'API",
@@ -44,7 +46,9 @@
           "method": "Méthode HTTP à utiliser",
           "headers": "En-têtes au format 'Clé: Valeur', un par ligne. Pour plusieurs en-têtes, collez du contenu multiligne (par ex., 'Authorization: Bearer token' sur une ligne, 'Content-Type: application/json' sur la suivante)",
           "body": "Contenu du corps de la requête. Pour du JSON/XML/texte multiligne, collez votre contenu formaté ici (supporte les templates Jinja2)",
-          "content_type": "En-tête Content-Type pour la requête"
+          "content_type": "En-tête Content-Type pour la requête",
+          "timeout": "Délai d'expiration de la requête en secondes (1-300). Par défaut 10 secondes",
+          "verify_ssl": "Vérifier les certificats SSL. Désactiver uniquement pour les certificats auto-signés (non recommandé en production)"
         }
       },
       "add_endpoint_auth": {
@@ -83,7 +87,9 @@
           "method": "Méthode HTTP",
           "headers": "En-têtes (un par ligne : 'Clé: Valeur')",
           "body": "Corps de la Requête",
-          "content_type": "Content-Type"
+          "content_type": "Content-Type",
+          "timeout": "Délai d'expiration (secondes)",
+          "verify_ssl": "Vérifier le Certificat SSL"
         },
         "data_description": {
           "endpoint_name": "Un nom unique pour cet endpoint d'API",
@@ -91,7 +97,9 @@
           "method": "Méthode HTTP à utiliser",
           "headers": "En-têtes au format 'Clé: Valeur', un par ligne. Pour plusieurs en-têtes, collez du contenu multiligne (par ex., 'Authorization: Bearer token' sur une ligne, 'Content-Type: application/json' sur la suivante)",
           "body": "Contenu du corps de la requête. Pour du JSON/XML/texte multiligne, collez votre contenu formaté ici (supporte les templates Jinja2)",
-          "content_type": "En-tête Content-Type pour la requête"
+          "content_type": "En-tête Content-Type pour la requête",
+          "timeout": "Délai d'expiration de la requête en secondes (1-300). Par défaut 10 secondes",
+          "verify_ssl": "Vérifier les certificats SSL. Désactiver uniquement pour les certificats auto-signés (non recommandé en production)"
         }
       },
       "edit_endpoint_auth": {
