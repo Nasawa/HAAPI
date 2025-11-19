@@ -21,6 +21,7 @@ from .const import (
     CONF_BODY,
     CONF_CONTENT_TYPE,
     CONF_TIMEOUT,
+    CONF_VERIFY_SSL,
     ATTR_RESPONSE_BODY,
     ATTR_RESPONSE_HEADERS,
     ATTR_REQUEST_HEADERS,
@@ -28,7 +29,9 @@ from .const import (
     ATTR_URL,
     ATTR_CONTENT_TYPE,
     ATTR_TIMEOUT,
+    ATTR_VERIFY_SSL,
     DEFAULT_TIMEOUT,
+    DEFAULT_VERIFY_SSL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -122,6 +125,9 @@ class HaapiRequestSensor(HaapiBaseSensor):
 
         # Add timeout
         attrs[ATTR_TIMEOUT] = self._endpoint_config.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+
+        # Add SSL verification setting
+        attrs[ATTR_VERIFY_SSL] = self._endpoint_config.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
 
         return attrs
 

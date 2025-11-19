@@ -36,7 +36,8 @@
           "headers": "Headers (one per line: 'Key: Value')",
           "body": "Request Body",
           "content_type": "Content-Type",
-          "timeout": "Timeout (seconds)"
+          "timeout": "Timeout (seconds)",
+          "verify_ssl": "Verify SSL Certificate"
         },
         "data_description": {
           "endpoint_name": "A unique name for this API endpoint",
@@ -45,7 +46,8 @@
           "headers": "Headers in 'Key: Value' format, one per line. For multiple headers, paste multiline content (e.g., 'Authorization: Bearer token' on one line, 'Content-Type: application/json' on the next)",
           "body": "Request body content. For multiline JSON/XML/text, paste your formatted content here (supports Jinja2 templates)",
           "content_type": "Content-Type header for the request",
-          "timeout": "Request timeout in seconds (1-300). Default is 10 seconds"
+          "timeout": "Request timeout in seconds (1-300). Default is 10 seconds",
+          "verify_ssl": "Verify SSL certificates. Disable only for self-signed certificates (not recommended for production)"
         }
       },
       "add_endpoint_auth": {
@@ -85,7 +87,8 @@
           "headers": "Headers (one per line: 'Key: Value')",
           "body": "Request Body",
           "content_type": "Content-Type",
-          "timeout": "Timeout (seconds)"
+          "timeout": "Timeout (seconds)",
+          "verify_ssl": "Verify SSL Certificate"
         },
         "data_description": {
           "endpoint_name": "A unique name for this API endpoint",
@@ -94,7 +97,8 @@
           "headers": "Headers in 'Key: Value' format, one per line. For multiple headers, paste multiline content (e.g., 'Authorization: Bearer token' on one line, 'Content-Type: application/json' on the next)",
           "body": "Request body content. For multiline JSON/XML/text, paste your formatted content here (supports Jinja2 templates)",
           "content_type": "Content-Type header for the request",
-          "timeout": "Request timeout in seconds (1-300). Default is 10 seconds"
+          "timeout": "Request timeout in seconds (1-300). Default is 10 seconds",
+          "verify_ssl": "Verify SSL certificates. Disable only for self-signed certificates (not recommended for production)"
         }
       },
       "edit_endpoint_auth": {

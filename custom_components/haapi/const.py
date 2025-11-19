@@ -19,6 +19,7 @@ CONF_BEARER_TOKEN = "bearer_token"
 CONF_API_KEY = "api_key"
 CONF_AUTH_TYPE = "auth_type"
 CONF_TIMEOUT = "timeout"
+CONF_VERIFY_SSL = "verify_ssl"
 
 # HTTP Methods
 HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"]
@@ -35,6 +36,7 @@ DEFAULT_METHOD = "GET"
 DEFAULT_CONTENT_TYPE = "application/json"
 DEFAULT_AUTH_TYPE = AUTH_NONE
 DEFAULT_TIMEOUT = 10
+DEFAULT_VERIFY_SSL = True
 
 # Entity types
 SENSOR_REQUEST = "request"
@@ -49,3 +51,4 @@ ATTR_URL = "url"
 ATTR_METHOD = "method"
 ATTR_CONTENT_TYPE = "content_type"
 ATTR_TIMEOUT = "timeout"
+ATTR_VERIFY_SSL = "verify_ssl"

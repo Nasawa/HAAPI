@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import ssl
 from datetime import datetime
 from typing import Any
 
@@ -35,10 +36,12 @@ from .const import (
     CONF_API_KEY,
     CONF_AUTH_TYPE,
     CONF_TIMEOUT,
+    CONF_VERIFY_SSL,
     AUTH_BASIC,
     AUTH_BEARER,
     AUTH_API_KEY,
     DEFAULT_TIMEOUT,
+    DEFAULT_VERIFY_SSL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -274,11 +277,29 @@ class HaapiApiCaller:
         # Get timeout from config
         timeout = self.endpoint_config.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
 
-        _LOGGER.debug("Calling API: %s %s (timeout: %ss)", method, url, timeout)
+        # Get SSL verification setting
+        verify_ssl = self.endpoint_config.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
+
+        # Create SSL context
+        ssl_context = None
+        if not verify_ssl:
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            _LOGGER.warning(
+                "SSL verification disabled for %s - use with caution!",
+                url
+            )
+
+        _LOGGER.debug(
+            "Calling API: %s %s (timeout: %ss, SSL verify: %s)",
+            method, url, timeout, verify_ssl
+        )
 
         try:
             async with async_timeout.timeout(timeout):
-                async with aiohttp.ClientSession() as session:
+                connector = aiohttp.TCPConnector(ssl=ssl_context if ssl_context else True)
+                async with aiohttp.ClientSession(connector=connector) as session:
                     async with session.request(
                         method=method,
                         url=url,

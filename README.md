@@ -59,6 +59,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - **Body**: Optional request body (for POST/PUT/PATCH)
 - **Content-Type**: Content type for the request (default: `application/json`)
 - **Timeout**: Request timeout in seconds (1-300, default: 10)
+- **Verify SSL Certificate**: Enable/disable SSL certificate verification (default: enabled)
 
 ### Step 2: Authentication
 
@@ -84,6 +85,7 @@ Each configured endpoint creates a device with the following entities:
   - `request_body`: Configured body (raw, non-templated)
   - `content_type`: Content-Type header
   - `timeout`: Configured timeout in seconds
+  - `verify_ssl`: SSL certificate verification enabled/disabled
 
 ### 3. Sensor: `{endpoint_name} Response`
 - **State**: HTTP status code (200, 404, 500, etc.)
