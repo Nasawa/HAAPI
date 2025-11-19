@@ -39,7 +39,9 @@
           "content_type": "Content-Type",
           "timeout": "Délai d'expiration (secondes)",
           "verify_ssl": "Vérifier le Certificat SSL",
-          "max_response_size": "Taille Maximale de la Réponse (octets)"
+          "max_response_size": "Taille Maximale de la Réponse (octets)",
+          "retries": "Nombre de Tentatives",
+          "retry_delay": "Délai entre les Tentatives (secondes)"
         },
         "data_description": {
           "endpoint_name": "Un nom unique pour cet endpoint d'API",
@@ -50,7 +52,9 @@
           "content_type": "En-tête Content-Type pour la requête",
           "timeout": "Délai d'expiration de la requête en secondes (1-300). Par défaut 10 secondes",
           "verify_ssl": "Vérifier les certificats SSL. Désactiver uniquement pour les certificats auto-signés (non recommandé en production)",
-          "max_response_size": "Taille maximale du corps de la réponse en octets (0-10000000). Définir à 0 pour illimité. Par défaut 10240 octets (10Ko). Aide à prévenir le gonflement de la base de données par de grandes réponses"
+          "max_response_size": "Taille maximale du corps de la réponse en octets (0-10000000). Définir à 0 pour illimité. Par défaut 10240 octets (10Ko). Aide à prévenir le gonflement de la base de données par de grandes réponses",
+          "retries": "Nombre de tentatives de reprise pour les requêtes échouées (0-5). Par défaut 0 (aucune reprise). Réessaie en cas d'erreurs réseau et d'erreurs serveur (codes d'état 5xx)",
+          "retry_delay": "Délai en secondes entre les tentatives de reprise (1-60). Par défaut 1 seconde"
         }
       },
       "add_endpoint_auth": {
@@ -92,7 +96,9 @@
           "content_type": "Content-Type",
           "timeout": "Délai d'expiration (secondes)",
           "verify_ssl": "Vérifier le Certificat SSL",
-          "max_response_size": "Taille Maximale de la Réponse (octets)"
+          "max_response_size": "Taille Maximale de la Réponse (octets)",
+          "retries": "Nombre de Tentatives",
+          "retry_delay": "Délai entre les Tentatives (secondes)"
         },
         "data_description": {
           "endpoint_name": "Un nom unique pour cet endpoint d'API",
@@ -103,7 +109,9 @@
           "content_type": "En-tête Content-Type pour la requête",
           "timeout": "Délai d'expiration de la requête en secondes (1-300). Par défaut 10 secondes",
           "verify_ssl": "Vérifier les certificats SSL. Désactiver uniquement pour les certificats auto-signés (non recommandé en production)",
-          "max_response_size": "Taille maximale du corps de la réponse en octets (0-10000000). Définir à 0 pour illimité. Par défaut 10240 octets (10Ko). Aide à prévenir le gonflement de la base de données par de grandes réponses"
+          "max_response_size": "Taille maximale du corps de la réponse en octets (0-10000000). Définir à 0 pour illimité. Par défaut 10240 octets (10Ko). Aide à prévenir le gonflement de la base de données par de grandes réponses",
+          "retries": "Nombre de tentatives de reprise pour les requêtes échouées (0-5). Par défaut 0 (aucune reprise). Réessaie en cas d'erreurs réseau et d'erreurs serveur (codes d'état 5xx)",
+          "retry_delay": "Délai en secondes entre les tentatives de reprise (1-60). Par défaut 1 seconde"
         }
       },
       "edit_endpoint_auth": {

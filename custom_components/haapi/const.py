@@ -21,6 +21,8 @@ CONF_AUTH_TYPE = "auth_type"
 CONF_TIMEOUT = "timeout"
 CONF_VERIFY_SSL = "verify_ssl"
 CONF_MAX_RESPONSE_SIZE = "max_response_size"
+CONF_RETRIES = "retries"
+CONF_RETRY_DELAY = "retry_delay"
 
 # HTTP Methods
 HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"]
@@ -39,6 +41,8 @@ DEFAULT_AUTH_TYPE = AUTH_NONE
 DEFAULT_TIMEOUT = 10
 DEFAULT_VERIFY_SSL = True
 DEFAULT_MAX_RESPONSE_SIZE = 10240  # 10KB (0 = unlimited)
+DEFAULT_RETRIES = 0  # No retries by default
+DEFAULT_RETRY_DELAY = 1  # 1 second between retries
 
 # Entity types
 SENSOR_REQUEST = "request"
@@ -56,3 +60,5 @@ ATTR_TIMEOUT = "timeout"
 ATTR_VERIFY_SSL = "verify_ssl"
 ATTR_MAX_RESPONSE_SIZE = "max_response_size"
 ATTR_TRUNCATED = "truncated"
+ATTR_RETRIES = "retries"
+ATTR_RETRY_DELAY = "retry_delay"

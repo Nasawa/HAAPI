@@ -61,6 +61,8 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - **Timeout**: Request timeout in seconds (1-300, default: 10)
 - **Verify SSL Certificate**: Enable/disable SSL certificate verification (default: enabled)
 - **Max Response Size**: Maximum response body size in bytes (0-10000000, default: 10240/10KB, 0 = unlimited)
+- **Number of Retries**: Retry attempts for failed requests (0-5, default: 0)
+- **Retry Delay**: Delay in seconds between retry attempts (1-60, default: 1)
 
 ### Step 2: Authentication
 
@@ -88,6 +90,8 @@ Each configured endpoint creates a device with the following entities:
   - `timeout`: Configured timeout in seconds
   - `verify_ssl`: SSL certificate verification enabled/disabled
   - `max_response_size`: Maximum response body size in bytes
+  - `retries`: Number of retry attempts configured
+  - `retry_delay`: Delay in seconds between retry attempts
 
 ### 3. Sensor: `{endpoint_name} Response`
 - **State**: HTTP status code (200, 404, 500, etc.)

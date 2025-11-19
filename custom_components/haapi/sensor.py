@@ -23,6 +23,8 @@ from .const import (
     CONF_TIMEOUT,
     CONF_VERIFY_SSL,
     CONF_MAX_RESPONSE_SIZE,
+    CONF_RETRIES,
+    CONF_RETRY_DELAY,
     ATTR_RESPONSE_BODY,
     ATTR_RESPONSE_HEADERS,
     ATTR_REQUEST_HEADERS,
@@ -33,9 +35,13 @@ from .const import (
     ATTR_VERIFY_SSL,
     ATTR_MAX_RESPONSE_SIZE,
     ATTR_TRUNCATED,
+    ATTR_RETRIES,
+    ATTR_RETRY_DELAY,
     DEFAULT_TIMEOUT,
     DEFAULT_VERIFY_SSL,
     DEFAULT_MAX_RESPONSE_SIZE,
+    DEFAULT_RETRIES,
+    DEFAULT_RETRY_DELAY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -135,6 +141,10 @@ class HaapiRequestSensor(HaapiBaseSensor):
 
         # Add max response size
         attrs[ATTR_MAX_RESPONSE_SIZE] = self._endpoint_config.get(CONF_MAX_RESPONSE_SIZE, DEFAULT_MAX_RESPONSE_SIZE)
+
+        # Add retry configuration
+        attrs[ATTR_RETRIES] = self._endpoint_config.get(CONF_RETRIES, DEFAULT_RETRIES)
+        attrs[ATTR_RETRY_DELAY] = self._endpoint_config.get(CONF_RETRY_DELAY, DEFAULT_RETRY_DELAY)
 
         return attrs
 

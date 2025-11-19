@@ -39,7 +39,9 @@
           "content_type": "Content-Type",
           "timeout": "Timeout (Sekunden)",
           "verify_ssl": "SSL-Zertifikat überprüfen",
-          "max_response_size": "Maximale Antwortgröße (Bytes)"
+          "max_response_size": "Maximale Antwortgröße (Bytes)",
+          "retries": "Anzahl der Wiederholungen",
+          "retry_delay": "Verzögerung zwischen Wiederholungen (Sekunden)"
         },
         "data_description": {
           "endpoint_name": "Ein eindeutiger Name für diesen API-Endpunkt",
@@ -50,7 +52,9 @@
           "content_type": "Content-Type-Header für die Anfrage",
           "timeout": "Anfrage-Timeout in Sekunden (1-300). Standard ist 10 Sekunden",
           "verify_ssl": "SSL-Zertifikate überprüfen. Nur für selbstsignierte Zertifikate deaktivieren (nicht empfohlen für den Produktivbetrieb)",
-          "max_response_size": "Maximale Antwort-Körpergröße in Bytes (0-10000000). Auf 0 setzen für unbegrenzt. Standard ist 10240 Bytes (10KB). Hilft, Datenbankaufblähung durch große Antworten zu verhindern"
+          "max_response_size": "Maximale Antwort-Körpergröße in Bytes (0-10000000). Auf 0 setzen für unbegrenzt. Standard ist 10240 Bytes (10KB). Hilft, Datenbankaufblähung durch große Antworten zu verhindern",
+          "retries": "Anzahl der Wiederholungsversuche für fehlgeschlagene Anfragen (0-5). Standard ist 0 (keine Wiederholungen). Wiederholt bei Netzwerkfehlern und Serverfehlern (5xx-Statuscodes)",
+          "retry_delay": "Verzögerung in Sekunden zwischen Wiederholungsversuchen (1-60). Standard ist 1 Sekunde"
         }
       },
       "add_endpoint_auth": {
@@ -92,7 +96,9 @@
           "content_type": "Content-Type",
           "timeout": "Timeout (Sekunden)",
           "verify_ssl": "SSL-Zertifikat überprüfen",
-          "max_response_size": "Maximale Antwortgröße (Bytes)"
+          "max_response_size": "Maximale Antwortgröße (Bytes)",
+          "retries": "Anzahl der Wiederholungen",
+          "retry_delay": "Verzögerung zwischen Wiederholungen (Sekunden)"
         },
         "data_description": {
           "endpoint_name": "Ein eindeutiger Name für diesen API-Endpunkt",
@@ -103,7 +109,9 @@
           "content_type": "Content-Type-Header für die Anfrage",
           "timeout": "Anfrage-Timeout in Sekunden (1-300). Standard ist 10 Sekunden",
           "verify_ssl": "SSL-Zertifikate überprüfen. Nur für selbstsignierte Zertifikate deaktivieren (nicht empfohlen für den Produktivbetrieb)",
-          "max_response_size": "Maximale Antwort-Körpergröße in Bytes (0-10000000). Auf 0 setzen für unbegrenzt. Standard ist 10240 Bytes (10KB). Hilft, Datenbankaufblähung durch große Antworten zu verhindern"
+          "max_response_size": "Maximale Antwort-Körpergröße in Bytes (0-10000000). Auf 0 setzen für unbegrenzt. Standard ist 10240 Bytes (10KB). Hilft, Datenbankaufblähung durch große Antworten zu verhindern",
+          "retries": "Anzahl der Wiederholungsversuche für fehlgeschlagene Anfragen (0-5). Standard ist 0 (keine Wiederholungen). Wiederholt bei Netzwerkfehlern und Serverfehlern (5xx-Statuscodes)",
+          "retry_delay": "Verzögerung in Sekunden zwischen Wiederholungsversuchen (1-60). Standard ist 1 Sekunde"
         }
       },
       "edit_endpoint_auth": {

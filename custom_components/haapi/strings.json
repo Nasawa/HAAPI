@@ -38,7 +38,9 @@
           "content_type": "Content-Type",
           "timeout": "Timeout (seconds)",
           "verify_ssl": "Verify SSL Certificate",
-          "max_response_size": "Max Response Size (bytes)"
+          "max_response_size": "Max Response Size (bytes)",
+          "retries": "Number of Retries",
+          "retry_delay": "Retry Delay (seconds)"
         },
         "data_description": {
           "endpoint_name": "A unique name for this API endpoint",
@@ -49,7 +51,9 @@
           "content_type": "Content-Type header for the request",
           "timeout": "Request timeout in seconds (1-300). Default is 10 seconds",
           "verify_ssl": "Verify SSL certificates. Disable only for self-signed certificates (not recommended for production)",
-          "max_response_size": "Maximum response body size in bytes (0-10000000). Set to 0 for unlimited. Default is 10240 bytes (10KB). Helps prevent database bloat from large responses"
+          "max_response_size": "Maximum response body size in bytes (0-10000000). Set to 0 for unlimited. Default is 10240 bytes (10KB). Helps prevent database bloat from large responses",
+          "retries": "Number of retry attempts for failed requests (0-5). Default is 0 (no retries). Retries on network errors and server errors (5xx status codes)",
+          "retry_delay": "Delay in seconds between retry attempts (1-60). Default is 1 second"
         }
       },
       "add_endpoint_auth": {
@@ -91,7 +95,9 @@
           "content_type": "Content-Type",
           "timeout": "Timeout (seconds)",
           "verify_ssl": "Verify SSL Certificate",
-          "max_response_size": "Max Response Size (bytes)"
+          "max_response_size": "Max Response Size (bytes)",
+          "retries": "Number of Retries",
+          "retry_delay": "Retry Delay (seconds)"
         },
         "data_description": {
           "endpoint_name": "A unique name for this API endpoint",
@@ -102,7 +108,9 @@
           "content_type": "Content-Type header for the request",
           "timeout": "Request timeout in seconds (1-300). Default is 10 seconds",
           "verify_ssl": "Verify SSL certificates. Disable only for self-signed certificates (not recommended for production)",
-          "max_response_size": "Maximum response body size in bytes (0-10000000). Set to 0 for unlimited. Default is 10240 bytes (10KB). Helps prevent database bloat from large responses"
+          "max_response_size": "Maximum response body size in bytes (0-10000000). Set to 0 for unlimited. Default is 10240 bytes (10KB). Helps prevent database bloat from large responses",
+          "retries": "Number of retry attempts for failed requests (0-5). Default is 0 (no retries). Retries on network errors and server errors (5xx status codes)",
+          "retry_delay": "Delay in seconds between retry attempts (1-60). Default is 1 second"
         }
       },
       "edit_endpoint_auth": {

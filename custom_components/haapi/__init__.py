@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import ssl
 from datetime import datetime
@@ -38,12 +39,16 @@ from .const import (
     CONF_TIMEOUT,
     CONF_VERIFY_SSL,
     CONF_MAX_RESPONSE_SIZE,
+    CONF_RETRIES,
+    CONF_RETRY_DELAY,
     AUTH_BASIC,
     AUTH_BEARER,
     AUTH_API_KEY,
     DEFAULT_TIMEOUT,
     DEFAULT_VERIFY_SSL,
     DEFAULT_MAX_RESPONSE_SIZE,
+    DEFAULT_RETRIES,
+    DEFAULT_RETRY_DELAY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -289,6 +294,10 @@ class HaapiApiCaller:
         # Get SSL verification setting
         verify_ssl = self.endpoint_config.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
 
+        # Get retry configuration
+        retries = self.endpoint_config.get(CONF_RETRIES, DEFAULT_RETRIES)
+        retry_delay = self.endpoint_config.get(CONF_RETRY_DELAY, DEFAULT_RETRY_DELAY)
+
         # Create SSL context
         ssl_context = None
         if not verify_ssl:
@@ -301,69 +310,106 @@ class HaapiApiCaller:
             )
 
         _LOGGER.debug(
-            "Calling API: %s %s (timeout: %ss, SSL verify: %s)",
-            method, url, timeout, verify_ssl
+            "Calling API: %s %s (timeout: %ss, SSL verify: %s, retries: %d)",
+            method, url, timeout, verify_ssl, retries
         )
 
-        try:
-            async with async_timeout.timeout(timeout):
-                connector = aiohttp.TCPConnector(ssl=ssl_context if ssl_context else True)
-                async with aiohttp.ClientSession(connector=connector) as session:
-                    async with session.request(
-                        method=method,
-                        url=url,
-                        headers=headers if headers else None,
-                        data=body if body else None,
-                        auth=auth,
-                    ) as response:
-                        self._last_response_code = response.status
-                        self._last_fetch_time = dt_util.utcnow()
-                        response_body = await response.text()
-                        self._last_response_headers = dict(response.headers)
+        # Retry loop
+        last_exception = None
+        for attempt in range(retries + 1):
+            if attempt > 0:
+                _LOGGER.info(
+                    "Retry attempt %d/%d for %s after %ds delay",
+                    attempt, retries, self.endpoint_name, retry_delay
+                )
+                await asyncio.sleep(retry_delay)
 
-                        # Check if response needs truncation
-                        max_size = self.endpoint_config.get(CONF_MAX_RESPONSE_SIZE, DEFAULT_MAX_RESPONSE_SIZE)
-                        original_size = len(response_body)
+            try:
+                async with async_timeout.timeout(timeout):
+                    connector = aiohttp.TCPConnector(ssl=ssl_context if ssl_context else True)
+                    async with aiohttp.ClientSession(connector=connector) as session:
+                        async with session.request(
+                            method=method,
+                            url=url,
+                            headers=headers if headers else None,
+                            data=body if body else None,
+                            auth=auth,
+                        ) as response:
+                            self._last_response_code = response.status
+                            self._last_fetch_time = dt_util.utcnow()
+                            response_body = await response.text()
+                            self._last_response_headers = dict(response.headers)
 
-                        if max_size > 0 and original_size > max_size:
-                            # Truncate and add explicit message in response
-                            truncate_message = f"\n\n[TRUNCATED: Response size {original_size:,} bytes exceeds limit of {max_size:,} bytes. {original_size - max_size:,} bytes removed.]"
-                            available_space = max_size - len(truncate_message)
-                            if available_space > 0:
-                                self._last_response_body = response_body[:available_space] + truncate_message
+                            # Check if response needs truncation
+                            max_size = self.endpoint_config.get(CONF_MAX_RESPONSE_SIZE, DEFAULT_MAX_RESPONSE_SIZE)
+                            original_size = len(response_body)
+
+                            if max_size > 0 and original_size > max_size:
+                                # Truncate and add explicit message in response
+                                truncate_message = f"\n\n[TRUNCATED: Response size {original_size:,} bytes exceeds limit of {max_size:,} bytes. {original_size - max_size:,} bytes removed.]"
+                                available_space = max_size - len(truncate_message)
+                                if available_space > 0:
+                                    self._last_response_body = response_body[:available_space] + truncate_message
+                                else:
+                                    # If message won't fit, just truncate at max_size
+                                    self._last_response_body = response_body[:max_size]
+                                self._truncated = True
+                                _LOGGER.warning(
+                                    "Response body truncated for %s: %d bytes -> %d bytes (limit: %d bytes)",
+                                    self.endpoint_name, original_size, len(self._last_response_body), max_size
+                                )
                             else:
-                                # If message won't fit, just truncate at max_size
-                                self._last_response_body = response_body[:max_size]
-                            self._truncated = True
-                            _LOGGER.warning(
-                                "Response body truncated for %s: %d bytes -> %d bytes (limit: %d bytes)",
-                                self.endpoint_name, original_size, len(self._last_response_body), max_size
+                                self._last_response_body = response_body
+                                self._truncated = False
+
+                            _LOGGER.info(
+                                "API call completed: %s (status: %d)",
+                                url,
+                                response.status,
                             )
-                        else:
-                            self._last_response_body = response_body
-                            self._truncated = False
 
-                        _LOGGER.info(
-                            "API call completed: %s (status: %d)",
-                            url,
-                            response.status,
-                        )
+                            # Don't retry on client errors (4xx) or successful responses
+                            if response.status < 500:
+                                break
 
-        except aiohttp.ClientError as err:
-            _LOGGER.error("Error calling API %s: %s", url, err)
-            self._last_response_code = 0
-            self._last_fetch_time = dt_util.utcnow()
-            self._last_response_body = str(err)
-            self._last_response_headers = {}
-            self._truncated = False
+                            # Server error - retry if we have attempts left
+                            if attempt < retries:
+                                _LOGGER.warning(
+                                    "Server error %d for %s, will retry",
+                                    response.status, self.endpoint_name
+                                )
+                                continue
+                            else:
+                                # Last attempt with server error
+                                break
 
-        except Exception as err:
-            _LOGGER.error("Unexpected error calling API %s: %s", url, err)
-            self._last_response_code = 0
-            self._last_fetch_time = dt_util.utcnow()
-            self._last_response_body = str(err)
-            self._last_response_headers = {}
-            self._truncated = False
+            except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+                last_exception = err
+                _LOGGER.warning(
+                    "Error calling API %s (attempt %d/%d): %s",
+                    url, attempt + 1, retries + 1, err
+                )
+
+                # If this is the last attempt, set error response
+                if attempt >= retries:
+                    _LOGGER.error("All retry attempts failed for %s: %s", url, err)
+                    self._last_response_code = 0
+                    self._last_fetch_time = dt_util.utcnow()
+                    self._last_response_body = str(err)
+                    self._last_response_headers = {}
+                    self._truncated = False
+                # Otherwise continue to next retry
+                continue
+
+            except Exception as err:
+                # Don't retry on unexpected errors
+                _LOGGER.error("Unexpected error calling API %s: %s", url, err)
+                self._last_response_code = 0
+                self._last_fetch_time = dt_util.utcnow()
+                self._last_response_body = str(err)
+                self._last_response_headers = {}
+                self._truncated = False
+                break
 
         # Save response data to storage
         await self._save_callback()

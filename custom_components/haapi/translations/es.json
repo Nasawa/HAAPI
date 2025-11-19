@@ -39,7 +39,9 @@
           "content_type": "Content-Type",
           "timeout": "Tiempo de espera (segundos)",
           "verify_ssl": "Verificar Certificado SSL",
-          "max_response_size": "Tamaño Máximo de Respuesta (bytes)"
+          "max_response_size": "Tamaño Máximo de Respuesta (bytes)",
+          "retries": "Número de Reintentos",
+          "retry_delay": "Retraso entre Reintentos (segundos)"
         },
         "data_description": {
           "endpoint_name": "Un nombre único para este endpoint de API",
@@ -50,7 +52,9 @@
           "content_type": "Encabezado Content-Type para la solicitud",
           "timeout": "Tiempo de espera de la solicitud en segundos (1-300). Por defecto es 10 segundos",
           "verify_ssl": "Verificar certificados SSL. Deshabilitar solo para certificados autofirmados (no recomendado para producción)",
-          "max_response_size": "Tamaño máximo del cuerpo de respuesta en bytes (0-10000000). Establecer en 0 para ilimitado. Por defecto es 10240 bytes (10KB). Ayuda a prevenir el crecimiento de la base de datos por respuestas grandes"
+          "max_response_size": "Tamaño máximo del cuerpo de respuesta en bytes (0-10000000). Establecer en 0 para ilimitado. Por defecto es 10240 bytes (10KB). Ayuda a prevenir el crecimiento de la base de datos por respuestas grandes",
+          "retries": "Número de intentos de reintento para solicitudes fallidas (0-5). Por defecto es 0 (sin reintentos). Reintenta en errores de red y errores del servidor (códigos de estado 5xx)",
+          "retry_delay": "Retraso en segundos entre intentos de reintento (1-60). Por defecto es 1 segundo"
         }
       },
       "add_endpoint_auth": {
@@ -92,7 +96,9 @@
           "content_type": "Content-Type",
           "timeout": "Tiempo de espera (segundos)",
           "verify_ssl": "Verificar Certificado SSL",
-          "max_response_size": "Tamaño Máximo de Respuesta (bytes)"
+          "max_response_size": "Tamaño Máximo de Respuesta (bytes)",
+          "retries": "Número de Reintentos",
+          "retry_delay": "Retraso entre Reintentos (segundos)"
         },
         "data_description": {
           "endpoint_name": "Un nombre único para este endpoint de API",
@@ -103,7 +109,9 @@
           "content_type": "Encabezado Content-Type para la solicitud",
           "timeout": "Tiempo de espera de la solicitud en segundos (1-300). Por defecto es 10 segundos",
           "verify_ssl": "Verificar certificados SSL. Deshabilitar solo para certificados autofirmados (no recomendado para producción)",
-          "max_response_size": "Tamaño máximo del cuerpo de respuesta en bytes (0-10000000). Establecer en 0 para ilimitado. Por defecto es 10240 bytes (10KB). Ayuda a prevenir el crecimiento de la base de datos por respuestas grandes"
+          "max_response_size": "Tamaño máximo del cuerpo de respuesta en bytes (0-10000000). Establecer en 0 para ilimitado. Por defecto es 10240 bytes (10KB). Ayuda a prevenir el crecimiento de la base de datos por respuestas grandes",
+          "retries": "Número de intentos de reintento para solicitudes fallidas (0-5). Por defecto es 0 (sin reintentos). Reintenta en errores de red y errores del servidor (códigos de estado 5xx)",
+          "retry_delay": "Retraso en segundos entre intentos de reintento (1-60). Por defecto es 1 segundo"
         }
       },
       "edit_endpoint_auth": {

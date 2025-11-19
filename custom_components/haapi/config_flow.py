@@ -32,6 +32,8 @@ from .const import (
     CONF_TIMEOUT,
     CONF_VERIFY_SSL,
     CONF_MAX_RESPONSE_SIZE,
+    CONF_RETRIES,
+    CONF_RETRY_DELAY,
     HTTP_METHODS,
     AUTH_TYPES,
     DEFAULT_METHOD,
@@ -40,6 +42,8 @@ from .const import (
     DEFAULT_TIMEOUT,
     DEFAULT_VERIFY_SSL,
     DEFAULT_MAX_RESPONSE_SIZE,
+    DEFAULT_RETRIES,
+    DEFAULT_RETRY_DELAY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -136,6 +140,12 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): cv.boolean,
                 vol.Optional(CONF_MAX_RESPONSE_SIZE, default=DEFAULT_MAX_RESPONSE_SIZE): vol.All(
                     vol.Coerce(int), vol.Range(min=0, max=10000000)
+                ),
+                vol.Optional(CONF_RETRIES, default=DEFAULT_RETRIES): vol.All(
+                    vol.Coerce(int), vol.Range(min=0, max=5)
+                ),
+                vol.Optional(CONF_RETRY_DELAY, default=DEFAULT_RETRY_DELAY): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=60)
                 ),
             }
         )
@@ -277,6 +287,18 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
                     default=self._endpoint_data.get(CONF_MAX_RESPONSE_SIZE, DEFAULT_MAX_RESPONSE_SIZE)
                 ): vol.All(
                     vol.Coerce(int), vol.Range(min=0, max=10000000)
+                ),
+                vol.Optional(
+                    CONF_RETRIES,
+                    default=self._endpoint_data.get(CONF_RETRIES, DEFAULT_RETRIES)
+                ): vol.All(
+                    vol.Coerce(int), vol.Range(min=0, max=5)
+                ),
+                vol.Optional(
+                    CONF_RETRY_DELAY,
+                    default=self._endpoint_data.get(CONF_RETRY_DELAY, DEFAULT_RETRY_DELAY)
+                ): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=60)
                 ),
             }
         )
