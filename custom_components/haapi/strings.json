@@ -2,8 +2,28 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configure API Endpoint",
-        "description": "Set up a new API endpoint for HAAPI. You can use Jinja2 templates in URL, headers, and body fields.",
+        "title": "Set up HAAPI",
+        "description": "HAAPI allows you to integrate REST APIs into Home Assistant.\n\nAfter setup, add endpoints through the integration's Configure option."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only a single HAAPI integration instance is allowed.",
+      "no_endpoints": "No endpoints configured yet. Add an endpoint first."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage API Endpoints",
+        "menu_options": {
+          "add_endpoint": "Add New Endpoint",
+          "edit_endpoint": "Edit Endpoint",
+          "remove_endpoint": "Remove Endpoint"
+        }
+      },
+      "add_endpoint": {
+        "title": "Add API Endpoint",
+        "description": "Configure a new API endpoint. You can use Jinja2 templates in URL, headers, and body fields.",
         "data": {
           "endpoint_name": "Endpoint Name",
           "url": "URL",
@@ -21,7 +41,7 @@
           "content_type": "Content-Type header for the request"
         }
       },
-      "auth": {
+      "add_endpoint_auth": {
         "title": "Configure Authentication",
         "description": "Configure authentication for {endpoint_name}",
         "data": {
@@ -39,9 +59,15 @@
           "api_key": "API key for API Key authentication (sent as X-API-Key header)"
         }
       },
-      "reconfigure_confirm": {
-        "title": "Reconfigure API Endpoint",
-        "description": "Update the configuration for this API endpoint. You can use Jinja2 templates in URL, headers, and body fields.",
+      "edit_endpoint": {
+        "title": "Select Endpoint to Edit",
+        "data": {
+          "endpoint": "Endpoint"
+        }
+      },
+      "edit_endpoint_config": {
+        "title": "Edit Endpoint Configuration",
+        "description": "Update the endpoint configuration. You can use Jinja2 templates in URL, headers, and body fields.",
         "data": {
           "endpoint_name": "Endpoint Name",
           "url": "URL",
@@ -49,43 +75,26 @@
           "headers": "Headers (one per line: 'Key: Value')",
           "body": "Request Body",
           "content_type": "Content-Type"
-        },
-        "data_description": {
-          "endpoint_name": "A unique name for this API endpoint",
-          "url": "The API endpoint URL (supports Jinja2 templates)",
-          "method": "HTTP method to use",
-          "headers": "Request headers in 'Key: Value' format, one per line (supports templates)",
-          "body": "Request body content (supports templates)",
-          "content_type": "Content-Type header for the request"
         }
       },
-      "reconfigure_auth": {
-        "title": "Reconfigure Authentication",
-        "description": "Update authentication configuration for {endpoint_name}",
+      "edit_endpoint_auth": {
+        "title": "Edit Authentication",
+        "description": "Update authentication for {endpoint_name}",
         "data": {
           "auth_type": "Authentication Type",
           "username": "Username",
           "password": "Password",
           "bearer_token": "Bearer Token",
           "api_key": "API Key"
-        },
-        "data_description": {
-          "auth_type": "Type of authentication to use",
-          "username": "Username for Basic authentication",
-          "password": "Password for Basic authentication",
-          "bearer_token": "Token for Bearer authentication",
-          "api_key": "API key for API Key authentication (sent as X-API-Key header)"
+        }
+      },
+      "remove_endpoint": {
+        "title": "Remove Endpoint",
+        "description": "Select the endpoint to remove",
+        "data": {
+          "endpoint": "Endpoint"
         }
       }
-    },
-    "error": {
-      "cannot_connect": "Failed to connect to the API",
-      "invalid_auth": "Invalid authentication",
-      "unknown": "Unexpected error occurred"
-    },
-    "abort": {
-      "already_configured": "This endpoint name is already configured",
-      "reconfigure_successful": "Configuration updated successfully"
     }
   }
 }

@@ -13,11 +13,17 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import template
+from homeassistant.helpers.storage import Store
 from homeassistant.exceptions import TemplateError
 from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
+    STORAGE_VERSION,
+    STORAGE_KEY,
+    CONF_ENDPOINTS,
+    CONF_ENDPOINT_ID,
+    CONF_ENDPOINT_NAME,
     CONF_URL,
     CONF_METHOD,
     CONF_HEADERS,
@@ -42,9 +48,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up HAAPI from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
-    # Create API caller instance
-    api_caller = HaapiApiCaller(hass, entry)
-    hass.data[DOMAIN][entry.entry_id] = api_caller
+    # Create storage for persistent response data
+    store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}_{entry.entry_id}")
+    stored_data = await store.async_load() or {}
+
+    # Create coordinator for this integration entry
+    coordinator = HaapiCoordinator(hass, entry, store, stored_data)
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    # Set up update listener for options changes
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     # Forward setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -60,18 +73,93 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-class HaapiApiCaller:
-    """Class to handle API calls and store responses."""
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
-        """Initialize the API caller."""
+
+class HaapiCoordinator:
+    """Coordinator to manage multiple endpoint API callers."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        store: Store,
+        stored_data: dict[str, Any],
+    ) -> None:
+        """Initialize the coordinator."""
         self.hass = hass
         self.entry = entry
-        self._last_response_code: int | None = None
-        self._last_fetch_time: datetime | None = None
-        self._last_response_body: str | None = None
-        self._last_response_headers: dict[str, str] | None = None
+        self.store = store
+        self._api_callers: dict[str, HaapiApiCaller] = {}
+
+        # Create API caller for each endpoint
+        endpoints = entry.options.get(CONF_ENDPOINTS, entry.data.get(CONF_ENDPOINTS, []))
+        for endpoint_config in endpoints:
+            endpoint_id = endpoint_config[CONF_ENDPOINT_ID]
+            endpoint_data = stored_data.get(endpoint_id, {})
+            api_caller = HaapiApiCaller(hass, endpoint_config, endpoint_data, self._save_data)
+            self._api_callers[endpoint_id] = api_caller
+
+    def get_api_caller(self, endpoint_id: str) -> HaapiApiCaller | None:
+        """Get API caller for a specific endpoint."""
+        return self._api_callers.get(endpoint_id)
+
+    def get_all_endpoints(self) -> list[dict[str, Any]]:
+        """Get all endpoint configurations."""
+        return self.entry.options.get(CONF_ENDPOINTS, self.entry.data.get(CONF_ENDPOINTS, []))
+
+    async def _save_data(self) -> None:
+        """Save all endpoint response data to storage."""
+        data_to_save = {}
+        for endpoint_id, api_caller in self._api_callers.items():
+            data_to_save[endpoint_id] = {
+                "last_response_code": api_caller.last_response_code,
+                "last_response_body": api_caller.last_response_body,
+                "last_response_headers": api_caller.last_response_headers,
+                "last_fetch_time": api_caller.last_fetch_time.isoformat() if api_caller.last_fetch_time else None,
+            }
+        await self.store.async_save(data_to_save)
+
+
+class HaapiApiCaller:
+    """Class to handle API calls and store responses for a single endpoint."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        endpoint_config: dict[str, Any],
+        stored_data: dict[str, Any],
+        save_callback,
+    ) -> None:
+        """Initialize the API caller."""
+        self.hass = hass
+        self.endpoint_config = endpoint_config
+        self._save_callback = save_callback
+
+        # Restore from stored data or initialize
+        self._last_response_code: int | None = stored_data.get("last_response_code")
+        self._last_response_body: str | None = stored_data.get("last_response_body")
+        self._last_response_headers: dict[str, str] | None = stored_data.get("last_response_headers")
+
+        # Parse datetime if available
+        last_fetch_str = stored_data.get("last_fetch_time")
+        self._last_fetch_time: datetime | None = (
+            dt_util.parse_datetime(last_fetch_str) if last_fetch_str else None
+        )
+
         self._listeners: list = []
+
+    @property
+    def endpoint_id(self) -> str:
+        """Return the endpoint ID."""
+        return self.endpoint_config[CONF_ENDPOINT_ID]
+
+    @property
+    def endpoint_name(self) -> str:
+        """Return the endpoint name."""
+        return self.endpoint_config[CONF_ENDPOINT_NAME]
 
     @property
     def last_response_code(self) -> int | None:
@@ -135,16 +223,16 @@ class HaapiApiCaller:
     def _get_auth_headers(self) -> dict[str, str]:
         """Get authentication headers based on auth type."""
         headers = {}
-        auth_type = self.entry.data.get(CONF_AUTH_TYPE)
+        auth_type = self.endpoint_config.get(CONF_AUTH_TYPE)
 
         if auth_type == AUTH_BEARER:
-            token = self.entry.data.get(CONF_BEARER_TOKEN)
+            token = self.endpoint_config.get(CONF_BEARER_TOKEN)
             if token:
                 rendered_token = self._render_template(token)
                 headers["Authorization"] = f"Bearer {rendered_token}"
 
         elif auth_type == AUTH_API_KEY:
-            api_key = self.entry.data.get(CONF_API_KEY)
+            api_key = self.endpoint_config.get(CONF_API_KEY)
             if api_key:
                 rendered_key = self._render_template(api_key)
                 headers["X-API-Key"] = rendered_key
@@ -153,11 +241,11 @@ class HaapiApiCaller:
 
     async def async_call_api(self) -> None:
         """Execute the API call."""
-        url = self._render_template(self.entry.data[CONF_URL])
-        method = self.entry.data[CONF_METHOD]
-        headers = self._parse_headers(self.entry.data.get(CONF_HEADERS, ""))
-        body = self._render_template(self.entry.data.get(CONF_BODY, ""))
-        content_type = self.entry.data.get(CONF_CONTENT_TYPE)
+        url = self._render_template(self.endpoint_config[CONF_URL])
+        method = self.endpoint_config[CONF_METHOD]
+        headers = self._parse_headers(self.endpoint_config.get(CONF_HEADERS, ""))
+        body = self._render_template(self.endpoint_config.get(CONF_BODY, ""))
+        content_type = self.endpoint_config.get(CONF_CONTENT_TYPE)
 
         # Add authentication headers
         headers.update(self._get_auth_headers())
@@ -168,9 +256,9 @@ class HaapiApiCaller:
 
         # Prepare auth for basic auth
         auth = None
-        if self.entry.data.get(CONF_AUTH_TYPE) == AUTH_BASIC:
-            username = self.entry.data.get(CONF_USERNAME)
-            password = self.entry.data.get(CONF_PASSWORD)
+        if self.endpoint_config.get(CONF_AUTH_TYPE) == AUTH_BASIC:
+            username = self.endpoint_config.get(CONF_USERNAME)
+            password = self.endpoint_config.get(CONF_PASSWORD)
             if username and password:
                 rendered_username = self._render_template(username)
                 rendered_password = self._render_template(password)
@@ -217,6 +305,9 @@ class HaapiApiCaller:
             self._last_fetch_time = dt_util.utcnow()
             self._last_response_body = str(err)
             self._last_response_headers = {}
+
+        # Save response data to storage
+        await self._save_callback()
 
         # Notify all entities of the update
         self._notify_listeners()

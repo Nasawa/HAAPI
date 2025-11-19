@@ -1,8 +1,12 @@
 """Constants for the HAAPI integration."""
 
 DOMAIN = "haapi"
+STORAGE_VERSION = 1
+STORAGE_KEY = "haapi_responses"
 
 # Configuration keys
+CONF_ENDPOINTS = "endpoints"
+CONF_ENDPOINT_ID = "id"
 CONF_ENDPOINT_NAME = "endpoint_name"
 CONF_URL = "url"
 CONF_METHOD = "method"

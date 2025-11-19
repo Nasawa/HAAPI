@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any
 
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
     DOMAIN,
+    CONF_ENDPOINTS,
+    CONF_ENDPOINT_ID,
     CONF_ENDPOINT_NAME,
     CONF_URL,
     CONF_METHOD,
@@ -31,10 +34,6 @@ from .const import (
     DEFAULT_METHOD,
     DEFAULT_CONTENT_TYPE,
     DEFAULT_AUTH_TYPE,
-    AUTH_NONE,
-    AUTH_BASIC,
-    AUTH_BEARER,
-    AUTH_API_KEY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,29 +42,70 @@ _LOGGER = logging.getLogger(__name__)
 class HaapiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for HAAPI."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         """Initialize the config flow."""
-        self._data: dict[str, Any] = {}
-        self._reconfigure_entry: config_entries.ConfigEntry | None = None
+        self._endpoint_data: dict[str, Any] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step."""
-        errors: dict[str, str] = {}
+        """Handle the initial step - create HAAPI integration."""
+        # Check if HAAPI is already configured
+        if self._async_current_entries():
+            return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
-            # Store basic configuration
-            self._data = user_input.copy()
+            # Create entry with no endpoints initially
+            return self.async_create_entry(
+                title="HAAPI",
+                data={},
+                options={CONF_ENDPOINTS: []},
+            )
 
-            # Validate endpoint name is unique
-            await self.async_set_unique_id(user_input[CONF_ENDPOINT_NAME])
-            self._abort_if_unique_id_configured()
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "info": "HAAPI allows you to integrate REST APIs into Home Assistant. After setup, add endpoints through the integration's options."
+            },
+        )
 
-            # Move to authentication step
-            return await self.async_step_auth()
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> HaapiOptionsFlowHandler:
+        """Get the options flow for this handler."""
+        return HaapiOptionsFlowHandler(config_entry)
+
+
+class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow for HAAPI."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+        self._endpoint_data: dict[str, Any] = {}
+        self._endpoint_id: str | None = None
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage endpoints."""
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["add_endpoint", "edit_endpoint", "remove_endpoint"],
+        )
+
+    async def async_step_add_endpoint(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add a new endpoint."""
+        if user_input is not None:
+            self._endpoint_data = user_input.copy()
+            return await self.async_step_add_endpoint_auth()
 
         data_schema = vol.Schema(
             {
@@ -78,161 +118,222 @@ class HaapiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_BODY, default=""): selector.TextSelector(
                     selector.TextSelectorConfig(multiline=True)
                 ),
-                vol.Optional(
-                    CONF_CONTENT_TYPE, default=DEFAULT_CONTENT_TYPE
-                ): cv.string,
+                vol.Optional(CONF_CONTENT_TYPE, default=DEFAULT_CONTENT_TYPE): cv.string,
             }
         )
 
         return self.async_show_form(
-            step_id="user",
+            step_id="add_endpoint",
             data_schema=data_schema,
-            errors=errors,
         )
 
-    async def async_step_auth(
+    async def async_step_add_endpoint_auth(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle authentication configuration."""
-        errors: dict[str, str] = {}
-
+        """Configure authentication for new endpoint."""
         if user_input is not None:
-            # Merge authentication data with basic data
-            self._data.update(user_input)
+            self._endpoint_data.update(user_input)
 
-            # Create the config entry
+            # Generate unique ID for this endpoint
+            endpoint_id = str(uuid.uuid4())
+            self._endpoint_data[CONF_ENDPOINT_ID] = endpoint_id
+
+            # Add endpoint to options
+            endpoints = self.config_entry.options.get(CONF_ENDPOINTS, []).copy()
+            endpoints.append(self._endpoint_data)
+
             return self.async_create_entry(
-                title=self._data[CONF_ENDPOINT_NAME],
-                data=self._data,
+                title="",
+                data={CONF_ENDPOINTS: endpoints},
             )
 
-        # Build auth schema based on auth type
-        auth_type = self._data.get(CONF_AUTH_TYPE, DEFAULT_AUTH_TYPE)
-
-        data_schema = {
-            vol.Required(CONF_AUTH_TYPE, default=DEFAULT_AUTH_TYPE): vol.In(AUTH_TYPES),
-        }
-
-        # Add conditional fields for authentication
-        data_schema.update(
+        data_schema = vol.Schema(
             {
-                vol.Optional(CONF_USERNAME): cv.string,
-                vol.Optional(CONF_PASSWORD): cv.string,
-                vol.Optional(CONF_BEARER_TOKEN): cv.string,
-                vol.Optional(CONF_API_KEY): cv.string,
+                vol.Required(CONF_AUTH_TYPE, default=DEFAULT_AUTH_TYPE): vol.In(AUTH_TYPES),
+                vol.Optional(CONF_USERNAME, default=""): cv.string,
+                vol.Optional(CONF_PASSWORD, default=""): cv.string,
+                vol.Optional(CONF_BEARER_TOKEN, default=""): cv.string,
+                vol.Optional(CONF_API_KEY, default=""): cv.string,
             }
         )
 
         return self.async_show_form(
-            step_id="auth",
-            data_schema=vol.Schema(data_schema),
-            errors=errors,
-            description_placeholders={"endpoint_name": self._data[CONF_ENDPOINT_NAME]},
+            step_id="add_endpoint_auth",
+            data_schema=data_schema,
+            description_placeholders={
+                "endpoint_name": self._endpoint_data[CONF_ENDPOINT_NAME]
+            },
         )
 
-    async def async_step_reconfigure(
+    async def async_step_edit_endpoint(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle reconfiguration of an existing entry."""
-        self._reconfigure_entry = self.hass.config_entries.async_get_entry(
-            self.context["entry_id"]
-        )
-        return await self.async_step_reconfigure_confirm()
+        """Select endpoint to edit."""
+        endpoints = self.config_entry.options.get(CONF_ENDPOINTS, [])
 
-    async def async_step_reconfigure_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle reconfiguration confirmation."""
-        errors: dict[str, str] = {}
+        if not endpoints:
+            return self.async_abort(reason="no_endpoints")
 
         if user_input is not None:
-            # Store basic configuration
-            self._data = user_input.copy()
-            # Move to authentication step
-            return await self.async_step_reconfigure_auth()
+            self._endpoint_id = user_input["endpoint"]
+            # Find the endpoint
+            for endpoint in endpoints:
+                if endpoint[CONF_ENDPOINT_ID] == self._endpoint_id:
+                    self._endpoint_data = endpoint.copy()
+                    break
+            return await self.async_step_edit_endpoint_config()
 
-        # Pre-populate with existing data
-        existing_data = self._reconfigure_entry.data
+        # Create selection options
+        endpoint_options = {
+            ep[CONF_ENDPOINT_ID]: ep[CONF_ENDPOINT_NAME]
+            for ep in endpoints
+        }
+
+        data_schema = vol.Schema(
+            {
+                vol.Required("endpoint"): vol.In(endpoint_options),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="edit_endpoint",
+            data_schema=data_schema,
+        )
+
+    async def async_step_edit_endpoint_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit endpoint configuration."""
+        if user_input is not None:
+            self._endpoint_data.update(user_input)
+            return await self.async_step_edit_endpoint_auth()
 
         data_schema = vol.Schema(
             {
                 vol.Required(
-                    CONF_ENDPOINT_NAME, default=existing_data.get(CONF_ENDPOINT_NAME)
+                    CONF_ENDPOINT_NAME,
+                    default=self._endpoint_data.get(CONF_ENDPOINT_NAME)
                 ): cv.string,
-                vol.Required(CONF_URL, default=existing_data.get(CONF_URL)): cv.string,
                 vol.Required(
-                    CONF_METHOD, default=existing_data.get(CONF_METHOD, DEFAULT_METHOD)
+                    CONF_URL,
+                    default=self._endpoint_data.get(CONF_URL)
+                ): cv.string,
+                vol.Required(
+                    CONF_METHOD,
+                    default=self._endpoint_data.get(CONF_METHOD, DEFAULT_METHOD)
                 ): vol.In(HTTP_METHODS),
                 vol.Optional(
-                    CONF_HEADERS, default=existing_data.get(CONF_HEADERS, "")
-                ): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
+                    CONF_HEADERS,
+                    default=self._endpoint_data.get(CONF_HEADERS, "")
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True)
+                ),
                 vol.Optional(
-                    CONF_BODY, default=existing_data.get(CONF_BODY, "")
-                ): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
+                    CONF_BODY,
+                    default=self._endpoint_data.get(CONF_BODY, "")
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True)
+                ),
                 vol.Optional(
                     CONF_CONTENT_TYPE,
-                    default=existing_data.get(CONF_CONTENT_TYPE, DEFAULT_CONTENT_TYPE),
+                    default=self._endpoint_data.get(CONF_CONTENT_TYPE, DEFAULT_CONTENT_TYPE)
                 ): cv.string,
             }
         )
 
         return self.async_show_form(
-            step_id="reconfigure_confirm",
+            step_id="edit_endpoint_config",
             data_schema=data_schema,
-            errors=errors,
         )
 
-    async def async_step_reconfigure_auth(
+    async def async_step_edit_endpoint_auth(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle authentication reconfiguration."""
-        errors: dict[str, str] = {}
-
+        """Edit endpoint authentication."""
         if user_input is not None:
-            # Merge authentication data with basic data
-            self._data.update(user_input)
+            self._endpoint_data.update(user_input)
 
-            # Update the existing config entry
-            self.hass.config_entries.async_update_entry(
-                self._reconfigure_entry,
-                data=self._data,
+            # Update the endpoint in options
+            endpoints = self.config_entry.options.get(CONF_ENDPOINTS, []).copy()
+            for i, endpoint in enumerate(endpoints):
+                if endpoint[CONF_ENDPOINT_ID] == self._endpoint_id:
+                    endpoints[i] = self._endpoint_data
+                    break
+
+            return self.async_create_entry(
+                title="",
+                data={CONF_ENDPOINTS: endpoints},
             )
-            await self.hass.config_entries.async_reload(
-                self._reconfigure_entry.entry_id
-            )
-            return self.async_abort(reason="reconfigure_successful")
 
-        # Pre-populate with existing auth data
-        existing_data = self._reconfigure_entry.data
-
-        data_schema = {
-            vol.Required(
-                CONF_AUTH_TYPE,
-                default=existing_data.get(CONF_AUTH_TYPE, DEFAULT_AUTH_TYPE),
-            ): vol.In(AUTH_TYPES),
-        }
-
-        # Add conditional fields for authentication with existing values
-        data_schema.update(
+        data_schema = vol.Schema(
             {
+                vol.Required(
+                    CONF_AUTH_TYPE,
+                    default=self._endpoint_data.get(CONF_AUTH_TYPE, DEFAULT_AUTH_TYPE)
+                ): vol.In(AUTH_TYPES),
                 vol.Optional(
-                    CONF_USERNAME, default=existing_data.get(CONF_USERNAME, "")
+                    CONF_USERNAME,
+                    default=self._endpoint_data.get(CONF_USERNAME, "")
                 ): cv.string,
                 vol.Optional(
-                    CONF_PASSWORD, default=existing_data.get(CONF_PASSWORD, "")
+                    CONF_PASSWORD,
+                    default=self._endpoint_data.get(CONF_PASSWORD, "")
                 ): cv.string,
                 vol.Optional(
-                    CONF_BEARER_TOKEN, default=existing_data.get(CONF_BEARER_TOKEN, "")
+                    CONF_BEARER_TOKEN,
+                    default=self._endpoint_data.get(CONF_BEARER_TOKEN, "")
                 ): cv.string,
                 vol.Optional(
-                    CONF_API_KEY, default=existing_data.get(CONF_API_KEY, "")
+                    CONF_API_KEY,
+                    default=self._endpoint_data.get(CONF_API_KEY, "")
                 ): cv.string,
             }
         )
 
         return self.async_show_form(
-            step_id="reconfigure_auth",
-            data_schema=vol.Schema(data_schema),
-            errors=errors,
-            description_placeholders={"endpoint_name": self._data[CONF_ENDPOINT_NAME]},
+            step_id="edit_endpoint_auth",
+            data_schema=data_schema,
+            description_placeholders={
+                "endpoint_name": self._endpoint_data[CONF_ENDPOINT_NAME]
+            },
+        )
+
+    async def async_step_remove_endpoint(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Remove an endpoint."""
+        endpoints = self.config_entry.options.get(CONF_ENDPOINTS, [])
+
+        if not endpoints:
+            return self.async_abort(reason="no_endpoints")
+
+        if user_input is not None:
+            endpoint_id_to_remove = user_input["endpoint"]
+
+            # Remove the endpoint
+            endpoints = [
+                ep for ep in endpoints
+                if ep[CONF_ENDPOINT_ID] != endpoint_id_to_remove
+            ]
+
+            return self.async_create_entry(
+                title="",
+                data={CONF_ENDPOINTS: endpoints},
+            )
+
+        # Create selection options
+        endpoint_options = {
+            ep[CONF_ENDPOINT_ID]: ep[CONF_ENDPOINT_NAME]
+            for ep in endpoints
+        }
+
+        data_schema = vol.Schema(
+            {
+                vol.Required("endpoint"): vol.In(endpoint_options),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="remove_endpoint",
+            data_schema=data_schema,
         )
