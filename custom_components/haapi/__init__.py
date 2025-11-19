@@ -37,11 +37,13 @@ from .const import (
     CONF_AUTH_TYPE,
     CONF_TIMEOUT,
     CONF_VERIFY_SSL,
+    CONF_MAX_RESPONSE_SIZE,
     AUTH_BASIC,
     AUTH_BEARER,
     AUTH_API_KEY,
     DEFAULT_TIMEOUT,
     DEFAULT_VERIFY_SSL,
+    DEFAULT_MAX_RESPONSE_SIZE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -124,6 +126,7 @@ class HaapiCoordinator:
                 "last_response_body": api_caller.last_response_body,
                 "last_response_headers": api_caller.last_response_headers,
                 "last_fetch_time": api_caller.last_fetch_time.isoformat() if api_caller.last_fetch_time else None,
+                "truncated": api_caller.truncated,
             }
         await self.store.async_save(data_to_save)
 
@@ -147,6 +150,7 @@ class HaapiApiCaller:
         self._last_response_code: int | None = stored_data.get("last_response_code")
         self._last_response_body: str | None = stored_data.get("last_response_body")
         self._last_response_headers: dict[str, str] | None = stored_data.get("last_response_headers")
+        self._truncated: bool = stored_data.get("truncated", False)
 
         # Parse datetime if available
         last_fetch_str = stored_data.get("last_fetch_time")
@@ -185,6 +189,11 @@ class HaapiApiCaller:
     def last_response_headers(self) -> dict[str, str] | None:
         """Return the last response headers."""
         return self._last_response_headers
+
+    @property
+    def truncated(self) -> bool:
+        """Return whether the last response was truncated."""
+        return self._truncated
 
     def add_listener(self, listener) -> None:
         """Add a listener for updates."""
@@ -309,8 +318,30 @@ class HaapiApiCaller:
                     ) as response:
                         self._last_response_code = response.status
                         self._last_fetch_time = dt_util.utcnow()
-                        self._last_response_body = await response.text()
+                        response_body = await response.text()
                         self._last_response_headers = dict(response.headers)
+
+                        # Check if response needs truncation
+                        max_size = self.endpoint_config.get(CONF_MAX_RESPONSE_SIZE, DEFAULT_MAX_RESPONSE_SIZE)
+                        original_size = len(response_body)
+
+                        if max_size > 0 and original_size > max_size:
+                            # Truncate and add explicit message in response
+                            truncate_message = f"\n\n[TRUNCATED: Response size {original_size:,} bytes exceeds limit of {max_size:,} bytes. {original_size - max_size:,} bytes removed.]"
+                            available_space = max_size - len(truncate_message)
+                            if available_space > 0:
+                                self._last_response_body = response_body[:available_space] + truncate_message
+                            else:
+                                # If message won't fit, just truncate at max_size
+                                self._last_response_body = response_body[:max_size]
+                            self._truncated = True
+                            _LOGGER.warning(
+                                "Response body truncated for %s: %d bytes -> %d bytes (limit: %d bytes)",
+                                self.endpoint_name, original_size, len(self._last_response_body), max_size
+                            )
+                        else:
+                            self._last_response_body = response_body
+                            self._truncated = False
 
                         _LOGGER.info(
                             "API call completed: %s (status: %d)",
@@ -324,6 +355,7 @@ class HaapiApiCaller:
             self._last_fetch_time = dt_util.utcnow()
             self._last_response_body = str(err)
             self._last_response_headers = {}
+            self._truncated = False
 
         except Exception as err:
             _LOGGER.error("Unexpected error calling API %s: %s", url, err)
@@ -331,6 +363,7 @@ class HaapiApiCaller:
             self._last_fetch_time = dt_util.utcnow()
             self._last_response_body = str(err)
             self._last_response_headers = {}
+            self._truncated = False
 
         # Save response data to storage
         await self._save_callback()

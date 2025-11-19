@@ -60,6 +60,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - **Content-Type**: Content type for the request (default: `application/json`)
 - **Timeout**: Request timeout in seconds (1-300, default: 10)
 - **Verify SSL Certificate**: Enable/disable SSL certificate verification (default: enabled)
+- **Max Response Size**: Maximum response body size in bytes (0-10000000, default: 10240/10KB, 0 = unlimited)
 
 ### Step 2: Authentication
 
@@ -86,12 +87,14 @@ Each configured endpoint creates a device with the following entities:
   - `content_type`: Content-Type header
   - `timeout`: Configured timeout in seconds
   - `verify_ssl`: SSL certificate verification enabled/disabled
+  - `max_response_size`: Maximum response body size in bytes
 
 ### 3. Sensor: `{endpoint_name} Response`
 - **State**: HTTP status code (200, 404, 500, etc.)
 - **Attributes**:
-  - `response_body`: Full response body content
+  - `response_body`: Response body content (may be truncated if exceeds max_response_size)
   - `response_headers`: Response headers as a dictionary
+  - `truncated`: Boolean indicating if response was truncated due to size limit
 
 *Note: Home Assistant automatically tracks when sensor states change via `last_changed` and `last_updated` attributes.*
 

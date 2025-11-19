@@ -38,7 +38,8 @@
           "body": "Corps de la Requête",
           "content_type": "Content-Type",
           "timeout": "Délai d'expiration (secondes)",
-          "verify_ssl": "Vérifier le Certificat SSL"
+          "verify_ssl": "Vérifier le Certificat SSL",
+          "max_response_size": "Taille Maximale de la Réponse (octets)"
         },
         "data_description": {
           "endpoint_name": "Un nom unique pour cet endpoint d'API",
@@ -48,7 +49,8 @@
           "body": "Contenu du corps de la requête. Pour du JSON/XML/texte multiligne, collez votre contenu formaté ici (supporte les templates Jinja2)",
           "content_type": "En-tête Content-Type pour la requête",
           "timeout": "Délai d'expiration de la requête en secondes (1-300). Par défaut 10 secondes",
-          "verify_ssl": "Vérifier les certificats SSL. Désactiver uniquement pour les certificats auto-signés (non recommandé en production)"
+          "verify_ssl": "Vérifier les certificats SSL. Désactiver uniquement pour les certificats auto-signés (non recommandé en production)",
+          "max_response_size": "Taille maximale du corps de la réponse en octets (0-10000000). Définir à 0 pour illimité. Par défaut 10240 octets (10Ko). Aide à prévenir le gonflement de la base de données par de grandes réponses"
         }
       },
       "add_endpoint_auth": {
@@ -89,7 +91,8 @@
           "body": "Corps de la Requête",
           "content_type": "Content-Type",
           "timeout": "Délai d'expiration (secondes)",
-          "verify_ssl": "Vérifier le Certificat SSL"
+          "verify_ssl": "Vérifier le Certificat SSL",
+          "max_response_size": "Taille Maximale de la Réponse (octets)"
         },
         "data_description": {
           "endpoint_name": "Un nom unique pour cet endpoint d'API",
@@ -99,7 +102,8 @@
           "body": "Contenu du corps de la requête. Pour du JSON/XML/texte multiligne, collez votre contenu formaté ici (supporte les templates Jinja2)",
           "content_type": "En-tête Content-Type pour la requête",
           "timeout": "Délai d'expiration de la requête en secondes (1-300). Par défaut 10 secondes",
-          "verify_ssl": "Vérifier les certificats SSL. Désactiver uniquement pour les certificats auto-signés (non recommandé en production)"
+          "verify_ssl": "Vérifier les certificats SSL. Désactiver uniquement pour les certificats auto-signés (non recommandé en production)",
+          "max_response_size": "Taille maximale du corps de la réponse en octets (0-10000000). Définir à 0 pour illimité. Par défaut 10240 octets (10Ko). Aide à prévenir le gonflement de la base de données par de grandes réponses"
         }
       },
       "edit_endpoint_auth": {

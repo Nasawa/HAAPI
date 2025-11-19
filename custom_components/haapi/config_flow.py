@@ -31,6 +31,7 @@ from .const import (
     CONF_AUTH_TYPE,
     CONF_TIMEOUT,
     CONF_VERIFY_SSL,
+    CONF_MAX_RESPONSE_SIZE,
     HTTP_METHODS,
     AUTH_TYPES,
     DEFAULT_METHOD,
@@ -38,6 +39,7 @@ from .const import (
     DEFAULT_AUTH_TYPE,
     DEFAULT_TIMEOUT,
     DEFAULT_VERIFY_SSL,
+    DEFAULT_MAX_RESPONSE_SIZE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -132,6 +134,9 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Coerce(int), vol.Range(min=1, max=300)
                 ),
                 vol.Optional(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): cv.boolean,
+                vol.Optional(CONF_MAX_RESPONSE_SIZE, default=DEFAULT_MAX_RESPONSE_SIZE): vol.All(
+                    vol.Coerce(int), vol.Range(min=0, max=10000000)
+                ),
             }
         )
 
@@ -267,6 +272,12 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_VERIFY_SSL,
                     default=self._endpoint_data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
                 ): cv.boolean,
+                vol.Optional(
+                    CONF_MAX_RESPONSE_SIZE,
+                    default=self._endpoint_data.get(CONF_MAX_RESPONSE_SIZE, DEFAULT_MAX_RESPONSE_SIZE)
+                ): vol.All(
+                    vol.Coerce(int), vol.Range(min=0, max=10000000)
+                ),
             }
         )
 

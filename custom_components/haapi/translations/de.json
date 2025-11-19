@@ -38,7 +38,8 @@
           "body": "Anfrage-Body",
           "content_type": "Content-Type",
           "timeout": "Timeout (Sekunden)",
-          "verify_ssl": "SSL-Zertifikat überprüfen"
+          "verify_ssl": "SSL-Zertifikat überprüfen",
+          "max_response_size": "Maximale Antwortgröße (Bytes)"
         },
         "data_description": {
           "endpoint_name": "Ein eindeutiger Name für diesen API-Endpunkt",
@@ -48,7 +49,8 @@
           "body": "Inhalt des Anfrage-Bodys. Für mehrzeiligen JSON/XML/Text fügen Sie Ihren formatierten Inhalt hier ein (unterstützt Jinja2-Vorlagen)",
           "content_type": "Content-Type-Header für die Anfrage",
           "timeout": "Anfrage-Timeout in Sekunden (1-300). Standard ist 10 Sekunden",
-          "verify_ssl": "SSL-Zertifikate überprüfen. Nur für selbstsignierte Zertifikate deaktivieren (nicht empfohlen für den Produktivbetrieb)"
+          "verify_ssl": "SSL-Zertifikate überprüfen. Nur für selbstsignierte Zertifikate deaktivieren (nicht empfohlen für den Produktivbetrieb)",
+          "max_response_size": "Maximale Antwort-Körpergröße in Bytes (0-10000000). Auf 0 setzen für unbegrenzt. Standard ist 10240 Bytes (10KB). Hilft, Datenbankaufblähung durch große Antworten zu verhindern"
         }
       },
       "add_endpoint_auth": {
@@ -89,7 +91,8 @@
           "body": "Anfrage-Body",
           "content_type": "Content-Type",
           "timeout": "Timeout (Sekunden)",
-          "verify_ssl": "SSL-Zertifikat überprüfen"
+          "verify_ssl": "SSL-Zertifikat überprüfen",
+          "max_response_size": "Maximale Antwortgröße (Bytes)"
         },
         "data_description": {
           "endpoint_name": "Ein eindeutiger Name für diesen API-Endpunkt",
@@ -99,7 +102,8 @@
           "body": "Inhalt des Anfrage-Bodys. Für mehrzeiligen JSON/XML/Text fügen Sie Ihren formatierten Inhalt hier ein (unterstützt Jinja2-Vorlagen)",
           "content_type": "Content-Type-Header für die Anfrage",
           "timeout": "Anfrage-Timeout in Sekunden (1-300). Standard ist 10 Sekunden",
-          "verify_ssl": "SSL-Zertifikate überprüfen. Nur für selbstsignierte Zertifikate deaktivieren (nicht empfohlen für den Produktivbetrieb)"
+          "verify_ssl": "SSL-Zertifikate überprüfen. Nur für selbstsignierte Zertifikate deaktivieren (nicht empfohlen für den Produktivbetrieb)",
+          "max_response_size": "Maximale Antwort-Körpergröße in Bytes (0-10000000). Auf 0 setzen für unbegrenzt. Standard ist 10240 Bytes (10KB). Hilft, Datenbankaufblähung durch große Antworten zu verhindern"
         }
       },
       "edit_endpoint_auth": {

@@ -37,7 +37,8 @@
           "body": "Request Body",
           "content_type": "Content-Type",
           "timeout": "Timeout (seconds)",
-          "verify_ssl": "Verify SSL Certificate"
+          "verify_ssl": "Verify SSL Certificate",
+          "max_response_size": "Max Response Size (bytes)"
         },
         "data_description": {
           "endpoint_name": "A unique name for this API endpoint",
@@ -47,7 +48,8 @@
           "body": "Request body content. For multiline JSON/XML/text, paste your formatted content here (supports Jinja2 templates)",
           "content_type": "Content-Type header for the request",
           "timeout": "Request timeout in seconds (1-300). Default is 10 seconds",
-          "verify_ssl": "Verify SSL certificates. Disable only for self-signed certificates (not recommended for production)"
+          "verify_ssl": "Verify SSL certificates. Disable only for self-signed certificates (not recommended for production)",
+          "max_response_size": "Maximum response body size in bytes (0-10000000). Set to 0 for unlimited. Default is 10240 bytes (10KB). Helps prevent database bloat from large responses"
         }
       },
       "add_endpoint_auth": {
@@ -88,7 +90,8 @@
           "body": "Request Body",
           "content_type": "Content-Type",
           "timeout": "Timeout (seconds)",
-          "verify_ssl": "Verify SSL Certificate"
+          "verify_ssl": "Verify SSL Certificate",
+          "max_response_size": "Max Response Size (bytes)"
         },
         "data_description": {
           "endpoint_name": "A unique name for this API endpoint",
@@ -98,7 +101,8 @@
           "body": "Request body content. For multiline JSON/XML/text, paste your formatted content here (supports Jinja2 templates)",
           "content_type": "Content-Type header for the request",
           "timeout": "Request timeout in seconds (1-300). Default is 10 seconds",
-          "verify_ssl": "Verify SSL certificates. Disable only for self-signed certificates (not recommended for production)"
+          "verify_ssl": "Verify SSL certificates. Disable only for self-signed certificates (not recommended for production)",
+          "max_response_size": "Maximum response body size in bytes (0-10000000). Set to 0 for unlimited. Default is 10240 bytes (10KB). Helps prevent database bloat from large responses"
         }
       },
       "edit_endpoint_auth": {

@@ -20,6 +20,7 @@ CONF_API_KEY = "api_key"
 CONF_AUTH_TYPE = "auth_type"
 CONF_TIMEOUT = "timeout"
 CONF_VERIFY_SSL = "verify_ssl"
+CONF_MAX_RESPONSE_SIZE = "max_response_size"
 
 # HTTP Methods
 HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"]
@@ -37,6 +38,7 @@ DEFAULT_CONTENT_TYPE = "application/json"
 DEFAULT_AUTH_TYPE = AUTH_NONE
 DEFAULT_TIMEOUT = 10
 DEFAULT_VERIFY_SSL = True
+DEFAULT_MAX_RESPONSE_SIZE = 10240  # 10KB (0 = unlimited)
 
 # Entity types
 SENSOR_REQUEST = "request"
@@ -52,3 +54,5 @@ ATTR_METHOD = "method"
 ATTR_CONTENT_TYPE = "content_type"
 ATTR_TIMEOUT = "timeout"
 ATTR_VERIFY_SSL = "verify_ssl"
+ATTR_MAX_RESPONSE_SIZE = "max_response_size"
+ATTR_TRUNCATED = "truncated"

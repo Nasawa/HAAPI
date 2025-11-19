@@ -22,6 +22,7 @@ from .const import (
     CONF_CONTENT_TYPE,
     CONF_TIMEOUT,
     CONF_VERIFY_SSL,
+    CONF_MAX_RESPONSE_SIZE,
     ATTR_RESPONSE_BODY,
     ATTR_RESPONSE_HEADERS,
     ATTR_REQUEST_HEADERS,
@@ -30,8 +31,11 @@ from .const import (
     ATTR_CONTENT_TYPE,
     ATTR_TIMEOUT,
     ATTR_VERIFY_SSL,
+    ATTR_MAX_RESPONSE_SIZE,
+    ATTR_TRUNCATED,
     DEFAULT_TIMEOUT,
     DEFAULT_VERIFY_SSL,
+    DEFAULT_MAX_RESPONSE_SIZE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -129,6 +133,9 @@ class HaapiRequestSensor(HaapiBaseSensor):
         # Add SSL verification setting
         attrs[ATTR_VERIFY_SSL] = self._endpoint_config.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
 
+        # Add max response size
+        attrs[ATTR_MAX_RESPONSE_SIZE] = self._endpoint_config.get(CONF_MAX_RESPONSE_SIZE, DEFAULT_MAX_RESPONSE_SIZE)
+
         return attrs
 
 
@@ -159,5 +166,8 @@ class HaapiResponseSensor(HaapiBaseSensor):
 
         if self._api_caller.last_response_headers is not None:
             attrs[ATTR_RESPONSE_HEADERS] = self._api_caller.last_response_headers
+
+        # Add truncated indicator
+        attrs[ATTR_TRUNCATED] = self._api_caller.truncated
 
         return attrs
