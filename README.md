@@ -15,6 +15,8 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
   - [Using Input Helpers](#using-input-helpers)
 - [Troubleshooting](#troubleshooting)
 - [Testing](#testing)
+  - [Quick Start](#quick-start)
+  - [Test Servers](#test-servers)
 - [Development](#development)
 - [Translations](#translations)
 - [Contributing](#contributing)
@@ -239,9 +241,22 @@ logger:
 
 ## Testing
 
-HAAPI includes test servers for local validation without external APIs.
+HAAPI includes test servers and automated demo setup for easy exploration and validation.
 
-**Quick Start:**
+### Quick Start
+
+**Automated Demo Setup** (recommended for first-time users):
+```bash
+python tools/setup_demo_endpoints.py
+```
+
+This interactive script creates 9 pre-configured endpoints demonstrating all HAAPI features.
+
+**📖 [Read the Demo Setup guide](tools/README.md)** for detailed usage and options.
+
+### Test Servers
+
+**Start local test servers:**
 ```bash
 cd test_servers
 pip install -r requirements.txt
@@ -249,10 +264,7 @@ python echo_server.py      # Port 5000 - Echo server
 python auth_server.py      # Port 5001 - Auth testing
 ```
 
-**📖 [Read the full Testing guide](docs/TESTING.md)** for:
-- Detailed test server documentation
-- Testing workflows and best practices
-- Authentication testing examples
+**📖 [Read the Testing guide](docs/TESTING.md)** for detailed server documentation and workflows.
 
 ## Development
 
@@ -293,6 +305,9 @@ tests/
 ├── test_init.py         # API caller tests
 ├── test_button.py       # Button entity tests
 └── test_sensor.py       # Sensor entity tests
+
+tools/
+└── setup_demo_endpoints.py  # Demo endpoint setup script
 ```
 
 </details>
