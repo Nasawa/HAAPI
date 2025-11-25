@@ -217,7 +217,9 @@ class HaapiApiCaller:
 
         try:
             tpl = template.Template(template_str, self.hass)
-            return tpl.async_render()
+            rendered = tpl.async_render()
+            # Convert to string in case it returns a Wrapper object
+            return str(rendered)
         except TemplateError as err:
             _LOGGER.error("Error rendering template: %s", err)
             return template_str
