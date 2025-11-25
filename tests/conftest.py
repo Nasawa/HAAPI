@@ -1,6 +1,6 @@
 """Common fixtures for HAAPI tests."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from homeassistant.const import CONF_NAME
@@ -37,6 +37,13 @@ from custom_components.haapi.const import (
 
 
 pytest_plugins = "pytest_homeassistant_custom_component"
+
+
+@pytest.fixture(autouse=True)
+def mock_tcp_connector():
+    """Mock aiohttp.TCPConnector to avoid socket creation."""
+    with patch("aiohttp.TCPConnector", return_value=Mock()):
+        yield
 
 
 @pytest.fixture(autouse=True)
