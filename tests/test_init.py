@@ -256,7 +256,7 @@ async def test_api_call_with_json_body(hass: HomeAssistant, mock_endpoint_config
     call_kwargs = mock_session.request.call_args[1]
     assert "json" in call_kwargs
     assert call_kwargs["json"] == {"key": "value", "number": 42}
-    assert "data" not in call_kwargs or call_kwargs["data"] is None
+    assert call_kwargs.get("data") is None
 
 
 async def test_api_call_with_form_data(hass: HomeAssistant, mock_endpoint_config) -> None:
@@ -289,7 +289,7 @@ async def test_api_call_with_form_data(hass: HomeAssistant, mock_endpoint_config
     call_kwargs = mock_session.request.call_args[1]
     assert "data" in call_kwargs
     assert call_kwargs["data"] == "key=value&number=42"
-    assert "json" not in call_kwargs or call_kwargs["json"] is None
+    assert call_kwargs.get("json") is None
 
 
 async def test_api_call_with_invalid_json_body(hass: HomeAssistant, mock_endpoint_config) -> None:
@@ -322,4 +322,4 @@ async def test_api_call_with_invalid_json_body(hass: HomeAssistant, mock_endpoin
     call_kwargs = mock_session.request.call_args[1]
     assert "data" in call_kwargs
     assert call_kwargs["data"] == "not valid json"
-    assert "json" not in call_kwargs or call_kwargs["json"] is None
+    assert call_kwargs.get("json") is None

@@ -343,7 +343,7 @@ class HaapiApiCaller:
                                 # For JSON content, parse and use json parameter
                                 try:
                                     request_kwargs["json"] = json.loads(body)
-                                except (json.JSONDecodeError, ValueError) as e:
+                                except json.JSONDecodeError as e:
                                     _LOGGER.warning(
                                         "Failed to parse body as JSON, sending as text: %s", e
                                     )
