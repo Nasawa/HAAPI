@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import ssl
 from datetime import datetime
@@ -216,7 +217,9 @@ class HaapiApiCaller:
 
         try:
             tpl = template.Template(template_str, self.hass)
-            return tpl.async_render()
+            rendered = tpl.async_render()
+            # Convert to string in case it returns a Wrapper object
+            return str(rendered)
         except TemplateError as err:
             _LOGGER.error("Error rendering template: %s", err)
             return template_str
@@ -328,13 +331,30 @@ class HaapiApiCaller:
                 async with async_timeout.timeout(timeout):
                     connector = aiohttp.TCPConnector(ssl=ssl_context if ssl_context else True)
                     async with aiohttp.ClientSession(connector=connector) as session:
-                        async with session.request(
-                            method=method,
-                            url=url,
-                            headers=headers if headers else None,
-                            data=body if body else None,
-                            auth=auth,
-                        ) as response:
+                        # Prepare request kwargs
+                        request_kwargs = {
+                            "method": method,
+                            "url": url,
+                            "headers": headers if headers else None,
+                            "auth": auth,
+                        }
+
+                        # Handle body based on content type
+                        if body:
+                            if content_type and "application/json" in content_type.lower():
+                                # For JSON content, parse and use json parameter
+                                try:
+                                    request_kwargs["json"] = json.loads(body)
+                                except json.JSONDecodeError as e:
+                                    _LOGGER.warning(
+                                        "Failed to parse body as JSON, sending as text: %s", e
+                                    )
+                                    request_kwargs["data"] = body
+                            else:
+                                # For other content types, send as data (form-encoded, text, etc.)
+                                request_kwargs["data"] = body
+
+                        async with session.request(**request_kwargs) as response:
                             self._last_response_code = response.status
                             self._last_fetch_time = dt_util.utcnow()
                             response_body = await response.text()

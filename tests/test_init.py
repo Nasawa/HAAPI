@@ -224,3 +224,102 @@ async def test_api_call_with_ssl_disabled(hass: HomeAssistant, mock_endpoint_con
     assert api_caller.last_response_code == 200
     # Verify that TCPConnector was created with SSL context
     assert mock_session.request.called
+
+
+async def test_api_call_with_json_body(hass: HomeAssistant, mock_endpoint_config) -> None:
+    """Test API call with JSON body is sent correctly."""
+    from custom_components.haapi import HaapiApiCaller
+
+    # Configure endpoint with JSON body
+    mock_endpoint_config["method"] = "POST"
+    mock_endpoint_config["content_type"] = "application/json"
+    mock_endpoint_config["body"] = '{"key": "value", "number": 42}'
+
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.text = AsyncMock(return_value="Success")
+    mock_response.headers = {}
+
+    mock_session = AsyncMock()
+    mock_session.request = AsyncMock(return_value=mock_response)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+
+    save_callback = AsyncMock()
+    api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
+
+    with patch("aiohttp.ClientSession", return_value=mock_session):
+        await api_caller.async_call_api()
+
+    assert api_caller.last_response_code == 200
+    # Verify that request was called with json parameter, not data
+    call_kwargs = mock_session.request.call_args[1]
+    assert "json" in call_kwargs
+    assert call_kwargs["json"] == {"key": "value", "number": 42}
+    assert call_kwargs.get("data") is None
+
+
+async def test_api_call_with_form_data(hass: HomeAssistant, mock_endpoint_config) -> None:
+    """Test API call with form data is sent as data parameter."""
+    from custom_components.haapi import HaapiApiCaller
+
+    # Configure endpoint with form data
+    mock_endpoint_config["method"] = "POST"
+    mock_endpoint_config["content_type"] = "application/x-www-form-urlencoded"
+    mock_endpoint_config["body"] = "key=value&number=42"
+
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.text = AsyncMock(return_value="Success")
+    mock_response.headers = {}
+
+    mock_session = AsyncMock()
+    mock_session.request = AsyncMock(return_value=mock_response)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+
+    save_callback = AsyncMock()
+    api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
+
+    with patch("aiohttp.ClientSession", return_value=mock_session):
+        await api_caller.async_call_api()
+
+    assert api_caller.last_response_code == 200
+    # Verify that request was called with data parameter, not json
+    call_kwargs = mock_session.request.call_args[1]
+    assert "data" in call_kwargs
+    assert call_kwargs["data"] == "key=value&number=42"
+    assert call_kwargs.get("json") is None
+
+
+async def test_api_call_with_invalid_json_body(hass: HomeAssistant, mock_endpoint_config) -> None:
+    """Test API call with invalid JSON body falls back to sending as data."""
+    from custom_components.haapi import HaapiApiCaller
+
+    # Configure endpoint with invalid JSON
+    mock_endpoint_config["method"] = "POST"
+    mock_endpoint_config["content_type"] = "application/json"
+    mock_endpoint_config["body"] = "not valid json"
+
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.text = AsyncMock(return_value="Success")
+    mock_response.headers = {}
+
+    mock_session = AsyncMock()
+    mock_session.request = AsyncMock(return_value=mock_response)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+
+    save_callback = AsyncMock()
+    api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
+
+    with patch("aiohttp.ClientSession", return_value=mock_session):
+        await api_caller.async_call_api()
+
+    assert api_caller.last_response_code == 200
+    # Verify that invalid JSON falls back to data parameter
+    call_kwargs = mock_session.request.call_args[1]
+    assert "data" in call_kwargs
+    assert call_kwargs["data"] == "not valid json"
+    assert call_kwargs.get("json") is None
