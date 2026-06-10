@@ -87,15 +87,17 @@ class HaapiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> HaapiOptionsFlowHandler:
         """Get the options flow for this handler."""
-        return HaapiOptionsFlowHandler(config_entry)
+        return HaapiOptionsFlowHandler()
 
 
 class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for HAAPI."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+    def __init__(self) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+        # HA 2024.11+: `config_entry` is set automatically by the OptionsFlow base
+        # class as a read-only property. Assigning self.config_entry here raises
+        # AttributeError (no setter) -> 500 on options-flow start. Don't set it.
         self._endpoint_data: dict[str, Any] = {}
         self._endpoint_id: str | None = None
 
