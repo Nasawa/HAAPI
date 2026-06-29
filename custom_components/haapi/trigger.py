@@ -9,7 +9,7 @@ integration fires on every completed call.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 
@@ -21,13 +21,15 @@ from homeassistant.helpers.target import (
     TargetSelection,
     async_extract_referenced_entity_ids,
 )
-from homeassistant.helpers.trigger import (
-    Trigger,
-    TriggerActionRunner,
-    TriggerConfig,
-    TriggerNotTriggeredReporter,
-)
+from homeassistant.helpers.trigger import Trigger
 from homeassistant.helpers.typing import ConfigType
+
+if TYPE_CHECKING:
+    from homeassistant.helpers.trigger import (
+        TriggerActionRunner,
+        TriggerConfig,
+        TriggerNotTriggeredReporter,
+    )
 
 from .const import (
     ATTR_BODY_CHANGED,
@@ -40,6 +42,20 @@ from .const import (
     CONF_STATUS,
     DOMAIN,
     EVENT_HAAPI_RESPONSE,
+)
+
+# Keys every subclass reads off the event payload; used to drop malformed
+# haapi_response events fired by foreign automations on the global bus.
+_REQUIRED_EVENT_KEYS = frozenset(
+    {
+        ATTR_ENTRY_ID,
+        ATTR_ENDPOINT_ID,
+        ATTR_ENDPOINT_NAME,
+        ATTR_STATUS,
+        ATTR_OK,
+        ATTR_STATUS_CHANGED,
+        ATTR_BODY_CHANGED,
+    }
 )
 
 _BASE_TRIGGER_SCHEMA = vol.Schema(
@@ -134,6 +150,11 @@ class HaapiTrigger(Trigger):
         @callback
         def _handle_event(event: Event) -> None:
             data = event.data
+            # The event bus is global, so a foreign automation could fire a
+            # malformed haapi_response. Ignore anything missing required fields
+            # instead of raising KeyError / spamming the log.
+            if not _REQUIRED_EVENT_KEYS <= data.keys():
+                return
             if allowed is not None:
                 ident = f"{data[ATTR_ENTRY_ID]}_{data[ATTR_ENDPOINT_ID]}"
                 if ident not in allowed:

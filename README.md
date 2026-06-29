@@ -141,11 +141,11 @@ Each trigger can target one or more endpoint devices, or be left untargeted to f
 ```yaml
 automation:
   - alias: "Notify when API result changes"
-    triggers:
+    trigger:
       - trigger: haapi.response_changed
         target:
           device_id: <your HAAPI endpoint device>
-    actions:
+    action:
       - action: notify.mobile_app
         data:
           message: "API changed: {{ trigger.body }}"
@@ -155,9 +155,9 @@ automation:
 ```yaml
 automation:
   - alias: "Alert on API failure"
-    triggers:
+    trigger:
       - trigger: haapi.call_failed
-    actions:
+    action:
       - action: notify.mobile_app
         data:
           message: "{{ trigger.endpoint_name }} failed (status {{ trigger.status }})"

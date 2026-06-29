@@ -125,7 +125,7 @@ class HaapiCoordinator:
             endpoint_id = endpoint_config[CONF_ENDPOINT_ID]
             endpoint_data = stored_data.get(endpoint_id, {})
             api_caller = HaapiApiCaller(
-                hass, entry.entry_id, endpoint_config, endpoint_data, self._save_data
+                hass, endpoint_config, endpoint_data, self._save_data, entry_id=entry.entry_id
             )
             self._api_callers[endpoint_id] = api_caller
 
@@ -157,10 +157,10 @@ class HaapiApiCaller:
     def __init__(
         self,
         hass: HomeAssistant,
-        entry_id: str,
         endpoint_config: dict[str, Any],
         stored_data: dict[str, Any],
         save_callback,
+        entry_id: str | None = None,
     ) -> None:
         """Initialize the API caller."""
         self.hass = hass
