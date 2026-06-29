@@ -62,6 +62,27 @@ async def test_request_returns_response(hass: HomeAssistant, loaded) -> None:
     assert result[ATTR_ENDPOINT_NAME] == "Test Endpoint"
 
 
+async def test_request_without_capturing_response(hass: HomeAssistant, loaded) -> None:
+    """The action is OPTIONAL-response: a fire-and-forget call (no
+    return_response / response_variable) must succeed, not error.
+
+    This is the clear-plate case — without it, SupportsResponse.ONLY would make
+    HA reject the call ("requires response_variable").
+    """
+    session = make_session(make_response(204, ""))
+    with patch("aiohttp.ClientSession", return_value=session):
+        result = await hass.services.async_call(
+            DOMAIN,
+            "request",
+            blocking=True,
+            target={"device_id": [loaded]},
+        )
+
+    # No response requested -> None returned, but the call still happened.
+    assert result is None
+    assert session.request.called
+
+
 async def test_request_unresolvable_target_raises(hass: HomeAssistant, loaded) -> None:
     with pytest.raises(ServiceValidationError):
         await hass.services.async_call(
