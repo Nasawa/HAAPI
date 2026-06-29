@@ -13,6 +13,7 @@ from custom_components.haapi.const import (
     ATTR_ENTRY_ID,
     ATTR_HEADERS,
     ATTR_OK,
+    ATTR_PREVIOUS_BODY,
     ATTR_PREVIOUS_STATUS,
     ATTR_STATUS,
     ATTR_STATUS_CHANGED,
@@ -35,6 +36,7 @@ def _data(**over):
         ATTR_STATUS_CHANGED: True,
         ATTR_BODY_CHANGED: True,
         ATTR_PREVIOUS_STATUS: None,
+        ATTR_PREVIOUS_BODY: None,
     }
     base.update(over)
     return base
@@ -45,7 +47,7 @@ def _make(cls, options=None, target=None, hass=None):
 
 
 async def test_get_triggers(hass: HomeAssistant) -> None:
-    """All five triggers are exposed."""
+    """All triggers are exposed."""
     triggers = await trig.async_get_triggers(hass)
     assert set(triggers) == {
         "response_received",
@@ -53,6 +55,11 @@ async def test_get_triggers(hass: HomeAssistant) -> None:
         "call_failed",
         "response_changed",
         "status_changed",
+        "body_matches",
+        "value_matches",
+        "value_changed",
+        "recovered",
+        "went_down",
     }
 
 
@@ -135,4 +142,118 @@ async def test_attach_runner_status_filter(hass: HomeAssistant) -> None:
 
     assert len(calls) == 1
     assert calls[0][ATTR_STATUS] == 429
+    unsub()
+
+
+# ---------------------------------------------------------------------------
+# Content / JSON-path / health-edge triggers (2.8.0)
+# ---------------------------------------------------------------------------
+
+_JSON_BODY = '{"state": "FINISH", "progress": 100.0, "ams": [{"humidity": 25}]}'
+
+
+def test_resolve_path() -> None:
+    assert trig._resolve_path(_JSON_BODY, "state") == "FINISH"
+    assert trig._resolve_path(_JSON_BODY, "ams.0.humidity") == 25
+    assert trig._resolve_path(_JSON_BODY, "ams.5.humidity") is trig._UNSET  # bad index
+    assert trig._resolve_path(_JSON_BODY, "missing") is trig._UNSET
+    assert trig._resolve_path("not json", "state") is trig._UNSET
+    assert trig._resolve_path(None, "state") is trig._UNSET
+
+
+def test_body_matches() -> None:
+    t = _make(trig.BodyMatchesTrigger, options={"pattern": r'"state":\s*"FINISH"'})
+    assert t._event_matches(_data(body=_JSON_BODY)) is True
+    assert t._event_matches(_data(body='{"state": "RUNNING"}')) is False
+    assert t._event_matches(_data(body=None)) is False
+
+
+def test_value_matches_equals_and_pattern() -> None:
+    eq = _make(trig.ValueMatchesTrigger, options={"path": "state", "equals": "FINISH"})
+    assert eq._event_matches(_data(body=_JSON_BODY)) is True
+    assert eq._event_matches(_data(body='{"state": "RUNNING"}')) is False
+    # missing path
+    assert eq._event_matches(_data(body='{"x": 1}')) is False
+
+    pat = _make(trig.ValueMatchesTrigger, options={"path": "state", "pattern": "^FIN"})
+    assert pat._event_matches(_data(body=_JSON_BODY)) is True
+
+    # neither equals nor pattern -> fires when path resolves
+    exists = _make(trig.ValueMatchesTrigger, options={"path": "ams.0.humidity"})
+    assert exists._event_matches(_data(body=_JSON_BODY)) is True
+    assert exists._event_matches(_data(body='{"x": 1}')) is False
+
+
+def test_value_changed() -> None:
+    t = _make(trig.ValueChangedTrigger, options={"path": "state"})
+    # changed
+    assert t._event_matches(
+        _data(body='{"state": "FINISH"}', previous_body='{"state": "RUNNING"}')
+    ) is True
+    # same
+    assert t._event_matches(
+        _data(body='{"state": "FINISH"}', previous_body='{"state": "FINISH"}')
+    ) is False
+    # first call (no previous body) counts as changed
+    assert t._event_matches(_data(body='{"state": "FINISH"}', previous_body=None)) is True
+    # path missing in current -> no fire
+    assert t._event_matches(_data(body='{"x": 1}', previous_body='{"state": "A"}')) is False
+
+
+def test_recovered() -> None:
+    t = _make(trig.RecoveredTrigger)
+    assert t._event_matches(_data(ok=True, status=200, previous_status=500)) is True
+    assert t._event_matches(_data(ok=True, status=200, previous_status=0)) is True
+    assert t._event_matches(_data(ok=True, status=200, previous_status=200)) is False
+    assert t._event_matches(_data(ok=True, status=200, previous_status=None)) is False
+    assert t._event_matches(_data(ok=False, status=500, previous_status=500)) is False
+
+
+def test_went_down() -> None:
+    t = _make(trig.WentDownTrigger)
+    assert t._event_matches(_data(ok=False, status=500, previous_status=200)) is True
+    assert t._event_matches(_data(ok=False, status=0, previous_status=204)) is True
+    assert t._event_matches(_data(ok=True, status=200, previous_status=200)) is False
+    assert t._event_matches(_data(ok=False, status=500, previous_status=None)) is False
+    assert t._event_matches(_data(ok=False, status=500, previous_status=500)) is False
+
+
+async def test_validate_config_content_triggers(hass: HomeAssistant) -> None:
+    cfg = await trig.BodyMatchesTrigger.async_validate_config(
+        hass, {"options": {"pattern": "ok"}}
+    )
+    assert cfg["options"]["pattern"] == "ok"
+
+    cfg2 = await trig.ValueMatchesTrigger.async_validate_config(
+        hass, {"options": {"path": "state", "equals": "FINISH"}}
+    )
+    assert cfg2["options"]["path"] == "state"
+
+    # invalid regex is rejected
+    with pytest.raises(Exception):
+        await trig.BodyMatchesTrigger.async_validate_config(
+            hass, {"options": {"pattern": "("}}
+        )
+    # missing required path is rejected
+    with pytest.raises(Exception):
+        await trig.ValueChangedTrigger.async_validate_config(hass, {"options": {}})
+
+
+async def test_attach_value_matches_end_to_end(hass: HomeAssistant) -> None:
+    """Full bus path for a content trigger, incl. the malformed-event guard."""
+    calls: list[dict] = []
+    t = _make(
+        trig.ValueMatchesTrigger,
+        options={"path": "state", "equals": "FINISH"},
+        hass=hass,
+    )
+    unsub = await t.async_attach_runner(lambda p, d, c=None: calls.append(p))
+
+    hass.bus.async_fire(EVENT_HAAPI_RESPONSE, _data(body='{"state": "RUNNING"}'))
+    await hass.async_block_till_done()
+    hass.bus.async_fire(EVENT_HAAPI_RESPONSE, _data(body='{"state": "FINISH"}'))
+    await hass.async_block_till_done()
+
+    assert len(calls) == 1
+    assert calls[0]["platform"] == "haapi.ValueMatchesTrigger"
     unsub()

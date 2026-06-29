@@ -314,6 +314,7 @@ from custom_components.haapi.const import (  # noqa: E402
     ATTR_ENDPOINT_NAME,
     ATTR_ENTRY_ID,
     ATTR_OK,
+    ATTR_PREVIOUS_BODY,
     ATTR_PREVIOUS_STATUS,
     ATTR_STATUS,
     ATTR_STATUS_CHANGED,
@@ -351,6 +352,7 @@ async def test_response_event_fired(hass: HomeAssistant, mock_endpoint_config) -
     assert data[ATTR_STATUS_CHANGED] is True
     assert data[ATTR_BODY_CHANGED] is True
     assert data[ATTR_PREVIOUS_STATUS] is None
+    assert data[ATTR_PREVIOUS_BODY] is None
 
 
 async def test_change_detection_across_calls(

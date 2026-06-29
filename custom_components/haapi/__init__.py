@@ -62,6 +62,7 @@ from .const import (
     ATTR_STATUS_CHANGED,
     ATTR_BODY_CHANGED,
     ATTR_PREVIOUS_STATUS,
+    ATTR_PREVIOUS_BODY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -479,5 +480,6 @@ class HaapiApiCaller:
                 ATTR_STATUS_CHANGED: self._last_response_code != prev_code,
                 ATTR_BODY_CHANGED: self._last_response_body != prev_body,
                 ATTR_PREVIOUS_STATUS: prev_code,
+                ATTR_PREVIOUS_BODY: prev_body,
             },
         )
