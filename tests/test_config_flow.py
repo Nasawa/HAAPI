@@ -41,7 +41,8 @@ async def test_form(hass: HomeAssistant) -> None:
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
     assert result["type"] == FlowResultType.FORM
-    assert result["errors"] == {}
+    # HA returns errors: None on a clean initial form (older versions used {}).
+    assert result["errors"] in (None, {})
 
     result2 = await hass.config_entries.flow.async_configure(
         result["flow_id"],

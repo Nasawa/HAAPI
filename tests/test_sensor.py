@@ -6,6 +6,8 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from tests.helpers import make_session
+
 from custom_components.haapi.const import (
     ATTR_MAX_RESPONSE_SIZE,
     ATTR_RETRIES,
@@ -24,6 +26,7 @@ async def test_request_sensor(hass: HomeAssistant, mock_config_entry_data, mock_
         domain=DOMAIN,
         data=mock_config_entry_data,
         options=mock_config_entry_options,
+        version=2,
     )
     entry.add_to_hass(hass)
 
@@ -54,6 +57,7 @@ async def test_response_sensor(hass: HomeAssistant, mock_config_entry_data, mock
         domain=DOMAIN,
         data=mock_config_entry_data,
         options=mock_config_entry_options,
+        version=2,
     )
     entry.add_to_hass(hass)
 
@@ -80,10 +84,7 @@ async def test_response_sensor(hass: HomeAssistant, mock_config_entry_data, mock
     mock_response.text = AsyncMock(return_value='{"result": "success"}')
     mock_response.headers = {"Content-Type": "application/json"}
 
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(return_value=mock_response)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session = make_session(mock_response)
 
     with patch("aiohttp.ClientSession", return_value=mock_session):
         await api_caller.async_call_api()
@@ -113,6 +114,7 @@ async def test_response_sensor_with_truncation(
         domain=DOMAIN,
         data=mock_config_entry_data,
         options=options,
+        version=2,
     )
     entry.add_to_hass(hass)
 
@@ -132,10 +134,7 @@ async def test_response_sensor_with_truncation(
     mock_response.text = AsyncMock(return_value=large_response)
     mock_response.headers = {}
 
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(return_value=mock_response)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session = make_session(mock_response)
 
     with patch("aiohttp.ClientSession", return_value=mock_session):
         await api_caller.async_call_api()
