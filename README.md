@@ -8,6 +8,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Entities](#entities)
+- [Triggers](#triggers)
 - [Usage](#usage)
   - [Quick Start Examples](#quick-start-examples)
   - [Template Support](#template-support)
@@ -27,6 +28,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - **Template Support**: Use Jinja2 templates in URLs, headers, and request bodies
 - **Multiple Auth Types**: None, Basic, Bearer Token, or API Key authentication
 - **Response Storage**: Capture HTTP status codes, response bodies, and headers
+- **Integration Triggers**: React to call completions directly in automations (success, failure, response changed, status changed) — no `delay` + state-watch workarounds
 - **Modern HA Standards**: Built with config flow and proper entity platforms
 
 ## Installation
@@ -103,6 +105,63 @@ Each configured endpoint creates a device with the following entities:
   - `truncated`: Boolean indicating if response was truncated due to size limit
 
 *Note: Home Assistant automatically tracks when sensor states change via `last_changed` and `last_updated` attributes.*
+
+## Triggers
+
+*Requires Home Assistant 2026.7 or later.*
+
+HAAPI provides integration-specific triggers so automations can react the moment a call completes — without pressing a button, adding a `delay`, and then watching the response sensor. Watching `sensor.{endpoint}_response` with a generic state trigger is unreliable, because that sensor's state is the HTTP status code: two calls that both return `200` produce no state change, so the automation never fires. The triggers below fire on the actual call completion instead.
+
+| Trigger | Fires when |
+| --- | --- |
+| **Response received** | A call completes, for any result. Optional **Status code** field limits it to one status (e.g. `429`). |
+| **Call succeeded** | A call completes with a `2xx` status. |
+| **Call failed** | A call fails: a network/timeout error (status `0`) or an HTTP error (status `400`+). |
+| **Response changed** | The response body differs from the previous call to that endpoint. |
+| **Status code changed** | The HTTP status code differs from the previous call to that endpoint. |
+
+Each trigger can target one or more endpoint devices, or be left untargeted to fire for every endpoint.
+
+**Trigger variables** — every trigger exposes the result under `trigger`:
+
+| Variable | Description |
+| --- | --- |
+| `trigger.endpoint_name` | The endpoint's name |
+| `trigger.endpoint_id` | The endpoint's internal ID |
+| `trigger.status` | HTTP status code (`0` = network/timeout error) |
+| `trigger.ok` | `true` for a `2xx` status |
+| `trigger.body` | Response body (truncated per the endpoint's max response size) |
+| `trigger.headers` | Response headers as a dictionary |
+| `trigger.truncated` | Whether the body was truncated |
+| `trigger.status_changed` | Whether the status changed vs. the previous call |
+| `trigger.body_changed` | Whether the body changed vs. the previous call |
+| `trigger.previous_status` | The previous call's status code (`null` on the first call) |
+
+**Example** — notify only when an endpoint's response actually changes:
+```yaml
+automation:
+  - alias: "Notify when API result changes"
+    trigger:
+      - trigger: haapi.response_changed
+        target:
+          device_id: <your HAAPI endpoint device>
+    action:
+      - action: notify.mobile_app
+        data:
+          message: "API changed: {{ trigger.body }}"
+```
+
+**Example** — alert on a failed call:
+```yaml
+automation:
+  - alias: "Alert on API failure"
+    trigger:
+      - trigger: haapi.call_failed
+    action:
+      - action: notify.mobile_app
+        data:
+          message: "{{ trigger.endpoint_name }} failed (status {{ trigger.status }})"
+```
 
 ## Usage
 

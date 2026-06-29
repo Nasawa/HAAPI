@@ -22,3 +22,5 @@ Thumbs.db
 # Home Assistant
 *.log
 .claude-tools
+
+.venv/

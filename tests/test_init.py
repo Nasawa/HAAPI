@@ -1,7 +1,7 @@
 """Test the HAAPI __init__ module."""
 
 import asyncio
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import aiohttp
 import pytest
@@ -323,3 +323,126 @@ async def test_api_call_with_invalid_json_body(hass: HomeAssistant, mock_endpoin
     assert "data" in call_kwargs
     assert call_kwargs["data"] == "not valid json"
     assert call_kwargs.get("json") is None
+
+
+# ---------------------------------------------------------------------------
+# haapi_response event + change detection (integration triggers, 2.7.0)
+# ---------------------------------------------------------------------------
+
+from homeassistant.core import HomeAssistant as _HA  # noqa: E402
+from pytest_homeassistant_custom_component.common import async_capture_events  # noqa: E402
+
+from custom_components.haapi.const import (  # noqa: E402
+    ATTR_BODY,
+    ATTR_BODY_CHANGED,
+    ATTR_ENDPOINT_ID,
+    ATTR_ENDPOINT_NAME,
+    ATTR_ENTRY_ID,
+    ATTR_OK,
+    ATTR_PREVIOUS_STATUS,
+    ATTR_STATUS,
+    ATTR_STATUS_CHANGED,
+    EVENT_HAAPI_RESPONSE,
+)
+
+
+def _mock_client_session(status, body, headers=None):
+    """Build an aiohttp.ClientSession mock that behaves as an async CM."""
+    response = AsyncMock()
+    response.status = status
+    response.text = AsyncMock(return_value=body)
+    response.headers = headers or {}
+
+    req_cm = MagicMock()
+    req_cm.__aenter__ = AsyncMock(return_value=response)
+    req_cm.__aexit__ = AsyncMock(return_value=None)
+
+    session = MagicMock()
+    session.request = MagicMock(return_value=req_cm)
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=None)
+    return session
+
+
+async def test_response_event_fired(hass: HomeAssistant, mock_endpoint_config) -> None:
+    """A completed call fires haapi_response with the expected payload."""
+    from custom_components.haapi import HaapiApiCaller
+
+    events = async_capture_events(hass, EVENT_HAAPI_RESPONSE)
+    api_caller = HaapiApiCaller(
+        hass, mock_endpoint_config, {}, AsyncMock(), entry_id="entry-1"
+    )
+
+    session = _mock_client_session(200, "hello", {"Content-Type": "text/plain"})
+    with patch("aiohttp.ClientSession", return_value=session):
+        await api_caller.async_call_api()
+    await hass.async_block_till_done()
+
+    assert len(events) == 1
+    data = events[0].data
+    assert data[ATTR_ENTRY_ID] == "entry-1"
+    assert data[ATTR_ENDPOINT_ID] == "test-endpoint-id"
+    assert data[ATTR_ENDPOINT_NAME] == "Test Endpoint"
+    assert data[ATTR_STATUS] == 200
+    assert data[ATTR_OK] is True
+    assert data[ATTR_BODY] == "hello"
+    # First-ever call: no prior values, so both register as changed.
+    assert data[ATTR_STATUS_CHANGED] is True
+    assert data[ATTR_BODY_CHANGED] is True
+    assert data[ATTR_PREVIOUS_STATUS] is None
+
+
+async def test_change_detection_across_calls(
+    hass: HomeAssistant, mock_endpoint_config
+) -> None:
+    """status_changed / body_changed reflect diffs vs. the previous call."""
+    from custom_components.haapi import HaapiApiCaller
+
+    events = async_capture_events(hass, EVENT_HAAPI_RESPONSE)
+    api_caller = HaapiApiCaller(
+        hass, mock_endpoint_config, {}, AsyncMock(), entry_id="entry-1"
+    )
+
+    async def _call(status, body):
+        with patch(
+            "aiohttp.ClientSession",
+            return_value=_mock_client_session(status, body),
+        ):
+            await api_caller.async_call_api()
+        await hass.async_block_till_done()
+
+    await _call(200, "A")  # first
+    await _call(200, "A")  # identical
+    await _call(200, "B")  # body changed only
+    await _call(500, "B")  # status changed only
+
+    assert [e.data[ATTR_STATUS_CHANGED] for e in events] == [True, False, False, True]
+    assert [e.data[ATTR_BODY_CHANGED] for e in events] == [True, False, True, False]
+    assert [e.data[ATTR_OK] for e in events] == [True, True, True, False]
+    assert events[3].data[ATTR_PREVIOUS_STATUS] == 200
+
+
+async def test_failed_call_fires_event(hass: HomeAssistant, mock_endpoint_config) -> None:
+    """A network error still fires the event with status 0 / ok False."""
+    from custom_components.haapi import HaapiApiCaller
+
+    events = async_capture_events(hass, EVENT_HAAPI_RESPONSE)
+    api_caller = HaapiApiCaller(
+        hass, mock_endpoint_config, {}, AsyncMock(), entry_id="entry-1"
+    )
+
+    req_cm = MagicMock()
+    req_cm.__aenter__ = AsyncMock(side_effect=aiohttp.ClientError("boom"))
+    req_cm.__aexit__ = AsyncMock(return_value=None)
+    session = MagicMock()
+    session.request = MagicMock(return_value=req_cm)
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("aiohttp.ClientSession", return_value=session):
+        await api_caller.async_call_api()
+    await hass.async_block_till_done()
+
+    assert len(events) == 1
+    assert events[0].data[ATTR_STATUS] == 0
+    assert events[0].data[ATTR_OK] is False

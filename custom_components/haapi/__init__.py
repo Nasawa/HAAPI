@@ -50,6 +50,18 @@ from .const import (
     DEFAULT_MAX_RESPONSE_SIZE,
     DEFAULT_RETRIES,
     DEFAULT_RETRY_DELAY,
+    EVENT_HAAPI_RESPONSE,
+    ATTR_ENTRY_ID,
+    ATTR_ENDPOINT_ID,
+    ATTR_ENDPOINT_NAME,
+    ATTR_STATUS,
+    ATTR_OK,
+    ATTR_BODY,
+    ATTR_HEADERS,
+    ATTR_TRUNCATED,
+    ATTR_STATUS_CHANGED,
+    ATTR_BODY_CHANGED,
+    ATTR_PREVIOUS_STATUS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -112,7 +124,9 @@ class HaapiCoordinator:
         for endpoint_config in endpoints:
             endpoint_id = endpoint_config[CONF_ENDPOINT_ID]
             endpoint_data = stored_data.get(endpoint_id, {})
-            api_caller = HaapiApiCaller(hass, endpoint_config, endpoint_data, self._save_data)
+            api_caller = HaapiApiCaller(
+                hass, endpoint_config, endpoint_data, self._save_data, entry_id=entry.entry_id
+            )
             self._api_callers[endpoint_id] = api_caller
 
     def get_api_caller(self, endpoint_id: str) -> HaapiApiCaller | None:
@@ -146,9 +160,11 @@ class HaapiApiCaller:
         endpoint_config: dict[str, Any],
         stored_data: dict[str, Any],
         save_callback,
+        entry_id: str | None = None,
     ) -> None:
         """Initialize the API caller."""
         self.hass = hass
+        self._entry_id = entry_id
         self.endpoint_config = endpoint_config
         self._save_callback = save_callback
 
@@ -263,6 +279,10 @@ class HaapiApiCaller:
 
     async def async_call_api(self) -> None:
         """Execute the API call."""
+        # Capture the prior result so we can report what changed after the call.
+        prev_code = self._last_response_code
+        prev_body = self._last_response_body
+
         url = self._render_template(self.endpoint_config[CONF_URL])
         method = self.endpoint_config[CONF_METHOD]
         headers = self._parse_headers(self.endpoint_config.get(CONF_HEADERS, ""))
@@ -436,3 +456,28 @@ class HaapiApiCaller:
 
         # Notify all entities of the update
         self._notify_listeners()
+
+        # Fire the completion event so integration-specific triggers can react.
+        self._fire_response_event(prev_code, prev_body)
+
+    def _fire_response_event(
+        self, prev_code: int | None, prev_body: str | None
+    ) -> None:
+        """Fire the haapi_response event describing the completed call."""
+        status = self._last_response_code or 0
+        self.hass.bus.async_fire(
+            EVENT_HAAPI_RESPONSE,
+            {
+                ATTR_ENTRY_ID: self._entry_id,
+                ATTR_ENDPOINT_ID: self.endpoint_id,
+                ATTR_ENDPOINT_NAME: self.endpoint_name,
+                ATTR_STATUS: status,
+                ATTR_OK: 200 <= status < 300,
+                ATTR_BODY: self._last_response_body,
+                ATTR_HEADERS: self._last_response_headers or {},
+                ATTR_TRUNCATED: self._truncated,
+                ATTR_STATUS_CHANGED: self._last_response_code != prev_code,
+                ATTR_BODY_CHANGED: self._last_response_body != prev_body,
+                ATTR_PREVIOUS_STATUS: prev_code,
+            },
+        )

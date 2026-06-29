@@ -1,0 +1,26 @@
+.endpoint_target: &endpoint_target
+  target:
+    device:
+      integration: haapi
+
+response_received:
+  target:
+    device:
+      integration: haapi
+  fields:
+    status:
+      required: false
+      example: 429
+      selector:
+        number:
+          min: 0
+          max: 599
+          mode: box
+
+call_succeeded: *endpoint_target
+
+call_failed: *endpoint_target
+
+response_changed: *endpoint_target
+
+status_changed: *endpoint_target
