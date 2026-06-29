@@ -112,7 +112,10 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         DOMAIN,
         SERVICE_REQUEST,
         _async_handle_request,
-        supports_response=SupportsResponse.ONLY,
+        # OPTIONAL, not ONLY: the action is used both to capture the response
+        # (response_variable) and to fire-and-forget (e.g. a POST that just
+        # acts); ONLY would force every caller to capture the response.
+        supports_response=SupportsResponse.OPTIONAL,
     )
     return True
 
