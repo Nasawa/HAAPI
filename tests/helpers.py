@@ -39,12 +39,33 @@ def make_session(*responses, raise_exc=None):
     session = MagicMock()
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=None)
+
     if raise_exc is not None:
         session.request = MagicMock(side_effect=raise_exc)
-    elif len(responses) == 1:
+        return session
+
+    if not responses:
+        raise ValueError("make_session requires at least one response or raise_exc=")
+
+    if len(responses) == 1:
+        # Single response: request() can be called any number of times.
         session.request = MagicMock(return_value=_request_cm(responses[0]))
-    else:
-        session.request = MagicMock(side_effect=[_request_cm(r) for r in responses])
+        return session
+
+    # Multiple responses: return each in turn, with a clear error if the code
+    # under test calls request() more times than responses were provided
+    # (instead of a confusing StopIteration).
+    cms = [_request_cm(r) for r in responses]
+
+    def _next_cm(*_args, **_kwargs):
+        if not cms:
+            raise AssertionError(
+                f"make_session: request() called more than the {len(responses)} "
+                "responses provided"
+            )
+        return cms.pop(0)
+
+    session.request = MagicMock(side_effect=_next_cm)
     return session
 
 
