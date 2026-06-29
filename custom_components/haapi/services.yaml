@@ -1,0 +1,5 @@
+request:
+  target:
+    entity:
+      integration: haapi
+      domain: button

@@ -35,6 +35,7 @@ async def endpoint(hass, mock_config_entry_data, mock_config_entry_options):
     device = dr.async_get(hass).async_get_device(
         identifiers={(DOMAIN, f"{entry.entry_id}_{_ENDPOINT_ID}")}
     )
+    assert device is not None, "HAAPI endpoint device was not created"
     return SimpleNamespace(caller=caller, device_id=device.id)
 
 
