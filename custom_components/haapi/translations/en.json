@@ -145,5 +145,33 @@
     "abort": {
       "no_endpoints": "No endpoints configured yet. Add an endpoint first."
     }
+  },
+  "triggers": {
+    "response_received": {
+      "name": "Response received",
+      "description": "Triggers when an endpoint completes a call, regardless of the result.",
+      "fields": {
+        "status": {
+          "name": "Status code",
+          "description": "Only trigger when the HTTP status code matches this value (0 means a network or timeout error). Leave empty to trigger on any status."
+        }
+      }
+    },
+    "call_succeeded": {
+      "name": "Call succeeded",
+      "description": "Triggers when an endpoint completes with a 2xx status code."
+    },
+    "call_failed": {
+      "name": "Call failed",
+      "description": "Triggers when a call fails: a network/timeout error (status 0) or an HTTP error (status 400 or higher)."
+    },
+    "response_changed": {
+      "name": "Response changed",
+      "description": "Triggers when the response body differs from the previous call to the endpoint."
+    },
+    "status_changed": {
+      "name": "Status code changed",
+      "description": "Triggers when the HTTP status code differs from the previous call to the endpoint."
+    }
   }
 }

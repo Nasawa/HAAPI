@@ -48,6 +48,25 @@ DEFAULT_RETRY_DELAY = 1  # 1 second between retries
 SENSOR_REQUEST = "request"
 SENSOR_RESPONSE = "response"
 
+# Event fired on the bus whenever an endpoint completes a call. The trigger
+# platform listens for this; the payload doubles as the trigger variables.
+EVENT_HAAPI_RESPONSE = "haapi_response"
+
+# Trigger option keys
+CONF_STATUS = "status"
+
+# Event data keys (also exposed to automations as trigger variables)
+ATTR_ENTRY_ID = "entry_id"
+ATTR_ENDPOINT_ID = "endpoint_id"
+ATTR_ENDPOINT_NAME = "endpoint_name"
+ATTR_STATUS = "status"
+ATTR_OK = "ok"
+ATTR_BODY = "body"
+ATTR_HEADERS = "headers"
+ATTR_STATUS_CHANGED = "status_changed"
+ATTR_BODY_CHANGED = "body_changed"
+ATTR_PREVIOUS_STATUS = "previous_status"
+
 # Attributes
 ATTR_RESPONSE_BODY = "response_body"
 ATTR_RESPONSE_HEADERS = "response_headers"
