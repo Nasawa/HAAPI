@@ -20,6 +20,7 @@ from homeassistant.core import (
     ServiceResponse,
     SupportsResponse,
 )
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import template
 from homeassistant.helpers.storage import Store
 from homeassistant.exceptions import ServiceValidationError, TemplateError
@@ -75,6 +76,10 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.SENSOR]
+
+# HAAPI is configured only via config entries (the request service has no YAML
+# config), so declare the config-entry-only schema.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 SERVICE_REQUEST = "request"
 

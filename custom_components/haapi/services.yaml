@@ -1,4 +1,5 @@
 request:
   target:
-    device:
+    entity:
       integration: haapi
+      domain: button
