@@ -54,6 +54,9 @@ EVENT_HAAPI_RESPONSE = "haapi_response"
 
 # Trigger option keys
 CONF_STATUS = "status"
+CONF_PATTERN = "pattern"
+CONF_PATH = "path"
+CONF_EQUALS = "equals"
 
 # Event data keys (also exposed to automations as trigger variables)
 ATTR_ENTRY_ID = "entry_id"
@@ -66,6 +69,7 @@ ATTR_HEADERS = "headers"
 ATTR_STATUS_CHANGED = "status_changed"
 ATTR_BODY_CHANGED = "body_changed"
 ATTR_PREVIOUS_STATUS = "previous_status"
+ATTR_PREVIOUS_BODY = "previous_body"
 
 # Attributes
 ATTR_RESPONSE_BODY = "response_body"

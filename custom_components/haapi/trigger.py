@@ -9,6 +9,8 @@ integration fires on every completed call.
 
 from __future__ import annotations
 
+import json
+import re
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -32,13 +34,19 @@ if TYPE_CHECKING:
     )
 
 from .const import (
+    ATTR_BODY,
     ATTR_BODY_CHANGED,
     ATTR_ENDPOINT_ID,
     ATTR_ENDPOINT_NAME,
     ATTR_ENTRY_ID,
     ATTR_OK,
+    ATTR_PREVIOUS_BODY,
+    ATTR_PREVIOUS_STATUS,
     ATTR_STATUS,
     ATTR_STATUS_CHANGED,
+    CONF_EQUALS,
+    CONF_PATH,
+    CONF_PATTERN,
     CONF_STATUS,
     DOMAIN,
     EVENT_HAAPI_RESPONSE,
@@ -55,8 +63,54 @@ _REQUIRED_EVENT_KEYS = frozenset(
         ATTR_OK,
         ATTR_STATUS_CHANGED,
         ATTR_BODY_CHANGED,
+        ATTR_BODY,
+        ATTR_PREVIOUS_STATUS,
+        ATTR_PREVIOUS_BODY,
     }
 )
+
+# Sentinel for "path not resolvable" (distinct from a real None value).
+_UNSET = object()
+
+
+def _resolve_path(body: str | None, path: str) -> Any:
+    """Resolve a dotted path (e.g. ``state`` or ``ams.0.humidity``) in a JSON body.
+
+    Returns the value at the path, or ``_UNSET`` if the body is not JSON or the
+    path does not resolve. List indices are written as integers in the path.
+    """
+    if body is None:
+        return _UNSET
+    try:
+        current = json.loads(body)
+    except (ValueError, TypeError):
+        return _UNSET
+    for part in path.split("."):
+        if isinstance(current, dict):
+            if part not in current:
+                return _UNSET
+            current = current[part]
+        elif isinstance(current, list):
+            try:
+                index = int(part)
+            except ValueError:
+                return _UNSET
+            # Non-negative indices only (JSON-pointer style); reject negatives.
+            if not 0 <= index < len(current):
+                return _UNSET
+            current = current[index]
+        else:
+            return _UNSET
+    return current
+
+
+def _valid_regex(value: str) -> str:
+    """Validate that a string compiles as a regex."""
+    try:
+        re.compile(value)
+    except re.error as err:
+        raise vol.Invalid(f"Invalid regular expression: {err}") from err
+    return value
 
 _BASE_TRIGGER_SCHEMA = vol.Schema(
     {
@@ -72,6 +126,35 @@ _RESPONSE_RECEIVED_SCHEMA = vol.Schema(
             vol.Optional(CONF_STATUS): vol.All(
                 vol.Coerce(int), vol.Range(min=0, max=599)
             ),
+        },
+    }
+)
+
+_BODY_MATCHES_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_TARGET): cv.TARGET_FIELDS,
+        vol.Required(CONF_OPTIONS): {
+            vol.Required(CONF_PATTERN): vol.All(cv.string, _valid_regex),
+        },
+    }
+)
+
+_VALUE_MATCHES_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_TARGET): cv.TARGET_FIELDS,
+        vol.Required(CONF_OPTIONS): {
+            vol.Required(CONF_PATH): cv.string,
+            vol.Optional(CONF_EQUALS): cv.string,
+            vol.Optional(CONF_PATTERN): vol.All(cv.string, _valid_regex),
+        },
+    }
+)
+
+_VALUE_CHANGED_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_TARGET): cv.TARGET_FIELDS,
+        vol.Required(CONF_OPTIONS): {
+            vol.Required(CONF_PATH): cv.string,
         },
     }
 )
@@ -211,12 +294,96 @@ class StatusChangedTrigger(HaapiTrigger):
         return bool(data[ATTR_STATUS_CHANGED])
 
 
+class BodyMatchesTrigger(HaapiTrigger):
+    """Fire when the response body matches a regular expression."""
+
+    _schema = _BODY_MATCHES_SCHEMA
+
+    @callback
+    def _event_matches(self, data: dict[str, Any]) -> bool:
+        body = data[ATTR_BODY]
+        if body is None:
+            return False
+        return re.search(self._options[CONF_PATTERN], body) is not None
+
+
+class ValueMatchesTrigger(HaapiTrigger):
+    """Fire when a JSON field in the body equals / matches a value.
+
+    ``path`` is a dotted path (``state``, ``ams.0.humidity``). With ``equals``
+    the field must equal that value (string comparison); with ``pattern`` the
+    field must match that regex. With neither, fires whenever the path resolves.
+    """
+
+    _schema = _VALUE_MATCHES_SCHEMA
+
+    @callback
+    def _event_matches(self, data: dict[str, Any]) -> bool:
+        value = _resolve_path(data[ATTR_BODY], self._options[CONF_PATH])
+        if value is _UNSET:
+            return False
+        equals = self._options.get(CONF_EQUALS)
+        pattern = self._options.get(CONF_PATTERN)
+        if equals is None and pattern is None:
+            return True
+        # Compare against the JSON spelling so booleans/null/numbers match what
+        # users see in the body (true/false/null/100.0); raw strings unquoted.
+        text = value if isinstance(value, str) else json.dumps(value)
+        if equals is not None and text != str(equals):
+            return False
+        if pattern is not None and re.search(pattern, text) is None:
+            return False
+        return True
+
+
+class ValueChangedTrigger(HaapiTrigger):
+    """Fire when a JSON field in the body changes from the previous call."""
+
+    _schema = _VALUE_CHANGED_SCHEMA
+
+    @callback
+    def _event_matches(self, data: dict[str, Any]) -> bool:
+        path = self._options[CONF_PATH]
+        current = _resolve_path(data[ATTR_BODY], path)
+        if current is _UNSET:
+            return False
+        return current != _resolve_path(data[ATTR_PREVIOUS_BODY], path)
+
+
+class RecoveredTrigger(HaapiTrigger):
+    """Fire when a call succeeds (2xx) after the previous call had failed."""
+
+    @callback
+    def _event_matches(self, data: dict[str, Any]) -> bool:
+        if not data[ATTR_OK]:
+            return False
+        prev = data[ATTR_PREVIOUS_STATUS]
+        return prev is not None and (prev == 0 or prev >= 400)
+
+
+class WentDownTrigger(HaapiTrigger):
+    """Fire when a call fails after the previous call had succeeded (2xx)."""
+
+    @callback
+    def _event_matches(self, data: dict[str, Any]) -> bool:
+        status = data[ATTR_STATUS]
+        if not (status == 0 or status >= 400):
+            return False
+        prev = data[ATTR_PREVIOUS_STATUS]
+        return prev is not None and 200 <= prev < 300
+
+
 TRIGGERS: dict[str, type[Trigger]] = {
     "response_received": ResponseReceivedTrigger,
     "call_succeeded": CallSucceededTrigger,
     "call_failed": CallFailedTrigger,
     "response_changed": ResponseChangedTrigger,
     "status_changed": StatusChangedTrigger,
+    "body_matches": BodyMatchesTrigger,
+    "value_matches": ValueMatchesTrigger,
+    "value_changed": ValueChangedTrigger,
+    "recovered": RecoveredTrigger,
+    "went_down": WentDownTrigger,
 }
 
 

@@ -119,8 +119,15 @@ HAAPI provides integration-specific triggers so automations can react the moment
 | **Call failed** | A call fails: a network/timeout error (status `0`) or an HTTP error (status `400`+). |
 | **Response changed** | The response body differs from the previous call to that endpoint. |
 | **Status code changed** | The HTTP status code differs from the previous call to that endpoint. |
+| **Response body matches** | The response body matches a regular expression (`pattern`). |
+| **Response value matches** | A JSON field (`path`, e.g. `state` or `ams.0.humidity`) `equals` a value or matches a `pattern`. With neither, fires whenever the path resolves. |
+| **Response value changed** | A JSON field (`path`) differs from the previous call — field-level version of *Response changed*. |
+| **Recovered** | A call succeeds (2xx) after the previous call had failed. |
+| **Went down** | A call fails after the previous call had succeeded (2xx). |
 
 Each trigger can target one or more endpoint devices, or be left untargeted to fire for every endpoint.
+
+JSON field paths are dotted (`state`, `ams.0.humidity`), with list items addressed by index. This is a lightweight built-in resolver — no JSONPath dependency. If the body isn't JSON or the path doesn't resolve, value triggers simply don't fire.
 
 **Trigger variables** — every trigger exposes the result under `trigger`:
 
@@ -136,6 +143,7 @@ Each trigger can target one or more endpoint devices, or be left untargeted to f
 | `trigger.status_changed` | Whether the status changed vs. the previous call |
 | `trigger.body_changed` | Whether the body changed vs. the previous call |
 | `trigger.previous_status` | The previous call's status code (`null` on the first call) |
+| `trigger.previous_body` | The previous call's response body (`null` on the first call) |
 
 **Example** — notify only when an endpoint's response actually changes:
 ```yaml
@@ -161,6 +169,23 @@ automation:
       - action: notify.mobile_app
         data:
           message: "{{ trigger.endpoint_name }} failed (status {{ trigger.status }})"
+```
+
+**Example** — act only when a specific JSON field reaches a value:
+```yaml
+automation:
+  - alias: "Notify when print finishes"
+    trigger:
+      - trigger: haapi.value_matches
+        target:
+          device_id: <your HAAPI endpoint device>
+        options:
+          path: state
+          equals: FINISH
+    action:
+      - action: notify.mobile_app
+        data:
+          message: "Print finished"
 ```
 
 ## Usage

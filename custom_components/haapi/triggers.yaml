@@ -24,3 +24,49 @@ call_failed: *endpoint_target
 response_changed: *endpoint_target
 
 status_changed: *endpoint_target
+
+body_matches:
+  target:
+    device:
+      integration: haapi
+  fields:
+    pattern:
+      required: true
+      example: '"state":\s*"FINISH"'
+      selector:
+        text:
+
+value_matches:
+  target:
+    device:
+      integration: haapi
+  fields:
+    path:
+      required: true
+      example: state
+      selector:
+        text:
+    equals:
+      required: false
+      example: FINISH
+      selector:
+        text:
+    pattern:
+      required: false
+      selector:
+        text:
+
+value_changed:
+  target:
+    device:
+      integration: haapi
+  fields:
+    path:
+      required: true
+      example: progress
+      selector:
+        text:
+
+recovered: *endpoint_target
+
+went_down: *endpoint_target

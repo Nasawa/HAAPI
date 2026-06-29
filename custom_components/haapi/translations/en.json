@@ -172,6 +172,52 @@
     "status_changed": {
       "name": "Status code changed",
       "description": "Triggers when the HTTP status code differs from the previous call to the endpoint."
+    },
+    "body_matches": {
+      "name": "Response body matches",
+      "description": "Triggers when the response body matches a regular expression.",
+      "fields": {
+        "pattern": {
+          "name": "Pattern",
+          "description": "Regular expression to search for anywhere in the response body."
+        }
+      }
+    },
+    "value_matches": {
+      "name": "Response value matches",
+      "description": "Triggers when a field in the JSON response body equals or matches a value.",
+      "fields": {
+        "path": {
+          "name": "Field path",
+          "description": "Dotted path to the field, e.g. 'state' or 'ams.0.humidity' (list items by index)."
+        },
+        "equals": {
+          "name": "Equals",
+          "description": "Trigger only when the field equals this value (string comparison). Leave empty to skip."
+        },
+        "pattern": {
+          "name": "Pattern",
+          "description": "Trigger only when the field matches this regular expression. Leave empty to skip."
+        }
+      }
+    },
+    "value_changed": {
+      "name": "Response value changed",
+      "description": "Triggers when a field in the JSON response body changes from the previous call.",
+      "fields": {
+        "path": {
+          "name": "Field path",
+          "description": "Dotted path to the field, e.g. 'progress' or 'ams.0.humidity' (list items by index)."
+        }
+      }
+    },
+    "recovered": {
+      "name": "Recovered",
+      "description": "Triggers when a call succeeds (2xx) after the previous call to the endpoint had failed."
+    },
+    "went_down": {
+      "name": "Went down",
+      "description": "Triggers when a call fails after the previous call to the endpoint had succeeded (2xx)."
     }
   }
 }
