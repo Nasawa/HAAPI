@@ -37,6 +37,7 @@ async def loaded(hass, mock_config_entry_data, mock_config_entry_options):
     device = dr.async_get(hass).async_get_device(
         identifiers={(DOMAIN, f"{entry.entry_id}_{_ENDPOINT_ID}")}
     )
+    assert device is not None, "HAAPI endpoint device was not created"
     return device.id
 
 
@@ -45,12 +46,14 @@ async def test_request_returns_response(hass: HomeAssistant, loaded) -> None:
         make_response(200, '{"state": "FINISH"}', {"Content-Type": "application/json"})
     )
     with patch("aiohttp.ClientSession", return_value=session):
+        # Call via target= (the real-automation path: HA merges target into
+        # call.data), not service_data, so this exercises how it's actually used.
         result = await hass.services.async_call(
             DOMAIN,
             "request",
-            {"device_id": [loaded]},
             blocking=True,
             return_response=True,
+            target={"device_id": [loaded]},
         )
 
     assert result[ATTR_STATUS] == 200
@@ -64,7 +67,7 @@ async def test_request_unresolvable_target_raises(hass: HomeAssistant, loaded) -
         await hass.services.async_call(
             DOMAIN,
             "request",
-            {"device_id": ["does-not-exist"]},
             blocking=True,
             return_response=True,
+            target={"device_id": ["does-not-exist"]},
         )
