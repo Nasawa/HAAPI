@@ -1,6 +1,7 @@
 """Tests for the HAAPI trigger platform."""
 
 import pytest
+import voluptuous as vol
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.trigger import TriggerConfig
 
@@ -156,9 +157,28 @@ def test_resolve_path() -> None:
     assert trig._resolve_path(_JSON_BODY, "state") == "FINISH"
     assert trig._resolve_path(_JSON_BODY, "ams.0.humidity") == 25
     assert trig._resolve_path(_JSON_BODY, "ams.5.humidity") is trig._UNSET  # bad index
+    assert trig._resolve_path(_JSON_BODY, "ams.-1.humidity") is trig._UNSET  # no negatives
     assert trig._resolve_path(_JSON_BODY, "missing") is trig._UNSET
     assert trig._resolve_path("not json", "state") is trig._UNSET
     assert trig._resolve_path(None, "state") is trig._UNSET
+
+
+def test_value_matches_json_spelling() -> None:
+    body = '{"connected": true, "progress": 100.0, "child": null}'
+    # JSON booleans/numbers/null match their JSON spelling, not Python's.
+    assert _make(
+        trig.ValueMatchesTrigger, options={"path": "connected", "equals": "true"}
+    )._event_matches(_data(body=body)) is True
+    assert _make(
+        trig.ValueMatchesTrigger, options={"path": "progress", "equals": "100.0"}
+    )._event_matches(_data(body=body)) is True
+    assert _make(
+        trig.ValueMatchesTrigger, options={"path": "child", "equals": "null"}
+    )._event_matches(_data(body=body)) is True
+    # Python spelling does NOT match.
+    assert _make(
+        trig.ValueMatchesTrigger, options={"path": "connected", "equals": "True"}
+    )._event_matches(_data(body=body)) is False
 
 
 def test_body_matches() -> None:
@@ -230,12 +250,12 @@ async def test_validate_config_content_triggers(hass: HomeAssistant) -> None:
     assert cfg2["options"]["path"] == "state"
 
     # invalid regex is rejected
-    with pytest.raises(Exception):
+    with pytest.raises(vol.Invalid):
         await trig.BodyMatchesTrigger.async_validate_config(
             hass, {"options": {"pattern": "("}}
         )
     # missing required path is rejected
-    with pytest.raises(Exception):
+    with pytest.raises(vol.Invalid):
         await trig.ValueChangedTrigger.async_validate_config(hass, {"options": {}})
 
 

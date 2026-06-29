@@ -95,7 +95,8 @@ def _resolve_path(body: str | None, path: str) -> Any:
                 index = int(part)
             except ValueError:
                 return _UNSET
-            if not -len(current) <= index < len(current):
+            # Non-negative indices only (JSON-pointer style); reject negatives.
+            if not 0 <= index < len(current):
                 return _UNSET
             current = current[index]
         else:
@@ -325,9 +326,9 @@ class ValueMatchesTrigger(HaapiTrigger):
         pattern = self._options.get(CONF_PATTERN)
         if equals is None and pattern is None:
             return True
-        text = (
-            json.dumps(value) if isinstance(value, (dict, list)) else str(value)
-        )
+        # Compare against the JSON spelling so booleans/null/numbers match what
+        # users see in the body (true/false/null/100.0); raw strings unquoted.
+        text = value if isinstance(value, str) else json.dumps(value)
         if equals is not None and text != str(equals):
             return False
         if pattern is not None and re.search(pattern, text) is None:
