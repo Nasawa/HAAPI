@@ -1,0 +1,4 @@
+request:
+  target:
+    device:
+      integration: haapi

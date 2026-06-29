@@ -14,11 +14,18 @@ import async_timeout
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+)
 from homeassistant.helpers import template
 from homeassistant.helpers.storage import Store
-from homeassistant.exceptions import TemplateError
+from homeassistant.exceptions import ServiceValidationError, TemplateError
 from homeassistant.util import dt as dt_util
+
+from .resolve import endpoint_callers
 
 from .const import (
     DOMAIN,
@@ -68,6 +75,41 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.SENSOR]
+
+SERVICE_REQUEST = "request"
+
+
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
+    """Set up HAAPI (registers the request action)."""
+
+    async def _async_handle_request(call: ServiceCall) -> ServiceResponse:
+        """Call a single targeted endpoint and return its response."""
+        callers = endpoint_callers(hass, dict(call.data))
+        if len(callers) != 1:
+            raise ServiceValidationError(
+                "haapi.request requires a target that resolves to exactly one "
+                f"HAAPI endpoint (resolved {len(callers)})"
+            )
+        caller = callers[0]
+        await caller.async_call_api()
+        status = caller.last_response_code or 0
+        return {
+            ATTR_ENDPOINT_ID: caller.endpoint_id,
+            ATTR_ENDPOINT_NAME: caller.endpoint_name,
+            ATTR_STATUS: status,
+            ATTR_OK: 200 <= status < 300,
+            ATTR_BODY: caller.last_response_body,
+            ATTR_HEADERS: caller.last_response_headers or {},
+            ATTR_TRUNCATED: caller.truncated,
+        }
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REQUEST,
+        _async_handle_request,
+        supports_response=SupportsResponse.ONLY,
+    )
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

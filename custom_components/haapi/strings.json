@@ -253,5 +253,12 @@
         }
       }
     }
+  },
+  "services": {
+    "request": {
+      "name": "Request",
+      "description": "Call a HAAPI endpoint and return its response (status, ok, body, headers) for use with response_variable.",
+      "fields": {}
+    }
   }
 }

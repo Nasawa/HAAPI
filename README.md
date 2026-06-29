@@ -10,6 +10,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - [Entities](#entities)
 - [Triggers](#triggers)
 - [Conditions](#conditions)
+- [Actions](#actions)
 - [Usage](#usage)
   - [Quick Start Examples](#quick-start-examples)
   - [Template Support](#template-support)
@@ -31,6 +32,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - **Response Storage**: Capture HTTP status codes, response bodies, and headers
 - **Integration Triggers**: React to call completions directly in automations (success, failure, response/status changed, body/JSON-field match) — no `delay` + state-watch workarounds
 - **Integration Conditions**: Gate automations on the last call's result (succeeded, body contains, JSON field is) without templating
+- **Request Action**: `haapi.request` calls an endpoint and returns its response in the same step (`response_variable`) — no button + wait/delay race
 - **Modern HA Standards**: Built with config flow and proper entity platforms
 
 ## Installation
@@ -218,6 +220,35 @@ automation:
         target:
           entity_id: button.my_endpoint_trigger
 ```
+
+## Actions
+
+### `haapi.request`
+
+Calls a single targeted endpoint and **returns its response**, so an automation can use the result in the very next step — no button-press + `wait`/`delay`, and no race. Target a single HAAPI endpoint device.
+
+Returns: `endpoint_id`, `endpoint_name`, `status`, `ok`, `body`, `headers`, `truncated`.
+
+```yaml
+automation:
+  - alias: "Clear the plate when a finished print is detected"
+    trigger:
+      - trigger: state
+        entity_id: binary_sensor.printer_door
+        from: "on"
+        to: "off"
+    action:
+      - action: haapi.request          # fetch fresh status, get the response back
+        target:
+          device_id: <status endpoint device>
+        response_variable: status
+      - condition: "{{ (status.body | from_json).awaiting_plate_clear }}"
+      - action: haapi.request          # clear-plate endpoint
+        target:
+          device_id: <clear-plate endpoint device>
+```
+
+This is the synchronous counterpart to the endpoint's **Trigger** button: the button is fire-and-forget (great for dashboards), while `haapi.request` awaits the call and hands you the response.
 
 ## Usage
 
