@@ -8,7 +8,6 @@ import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.haapi import async_setup_entry, async_unload_entry
 from custom_components.haapi.const import DOMAIN
 
 
@@ -18,17 +17,21 @@ async def test_setup_unload_entry(hass: HomeAssistant, mock_config_entry_data, m
         domain=DOMAIN,
         data=mock_config_entry_data,
         options=mock_config_entry_options,
+        version=2,
     )
     entry.add_to_hass(hass)
 
+    # Go through the config-entries state machine; modern HA requires the entry
+    # to be LOADED before platforms can be forwarded (a direct async_setup_entry
+    # call leaves it NOT_LOADED).
     with patch("custom_components.haapi.Store.async_load", return_value={}):
-        assert await async_setup_entry(hass, entry)
+        assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
     assert DOMAIN in hass.data
     assert entry.entry_id in hass.data[DOMAIN]
 
-    assert await async_unload_entry(hass, entry)
+    assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
 
     assert entry.entry_id not in hass.data[DOMAIN]
@@ -58,10 +61,7 @@ async def test_api_call_success(
     mock_response.text = AsyncMock(return_value=response_text)
     mock_response.headers = {"Content-Type": "text/plain"}
 
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(return_value=mock_response)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session = make_session(mock_response)
 
     save_callback = AsyncMock()
     api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
@@ -87,10 +87,7 @@ async def test_api_call_with_truncation(hass: HomeAssistant, mock_endpoint_confi
     mock_response.text = AsyncMock(return_value=large_response)
     mock_response.headers = {}
 
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(return_value=mock_response)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session = make_session(mock_response)
 
     save_callback = AsyncMock()
     api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
@@ -123,12 +120,9 @@ async def test_api_call_with_retries(hass: HomeAssistant, mock_endpoint_config) 
     mock_response_success.text = AsyncMock(return_value="Success")
     mock_response_success.headers = {}
 
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(
-        side_effect=[mock_response_fail, mock_response_fail, mock_response_success]
+    mock_session = make_session(
+        mock_response_fail, mock_response_fail, mock_response_success
     )
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
 
     save_callback = AsyncMock()
     api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
@@ -152,10 +146,7 @@ async def test_api_call_retry_exhausted(hass: HomeAssistant, mock_endpoint_confi
     mock_endpoint_config["retry_delay"] = 0
 
     # All calls fail with network error
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(side_effect=aiohttp.ClientError("Connection failed"))
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session = make_session(raise_exc=aiohttp.ClientError("Connection failed"))
 
     save_callback = AsyncMock()
     api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
@@ -183,10 +174,7 @@ async def test_api_call_no_retry_on_client_error(hass: HomeAssistant, mock_endpo
     mock_response.text = AsyncMock(return_value="Not Found")
     mock_response.headers = {}
 
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(return_value=mock_response)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session = make_session(mock_response)
 
     save_callback = AsyncMock()
     api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
@@ -210,10 +198,7 @@ async def test_api_call_with_ssl_disabled(hass: HomeAssistant, mock_endpoint_con
     mock_response.text = AsyncMock(return_value="Success")
     mock_response.headers = {}
 
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(return_value=mock_response)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session = make_session(mock_response)
 
     save_callback = AsyncMock()
     api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
@@ -240,10 +225,7 @@ async def test_api_call_with_json_body(hass: HomeAssistant, mock_endpoint_config
     mock_response.text = AsyncMock(return_value="Success")
     mock_response.headers = {}
 
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(return_value=mock_response)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session = make_session(mock_response)
 
     save_callback = AsyncMock()
     api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
@@ -273,10 +255,7 @@ async def test_api_call_with_form_data(hass: HomeAssistant, mock_endpoint_config
     mock_response.text = AsyncMock(return_value="Success")
     mock_response.headers = {}
 
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(return_value=mock_response)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session = make_session(mock_response)
 
     save_callback = AsyncMock()
     api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
@@ -306,10 +285,7 @@ async def test_api_call_with_invalid_json_body(hass: HomeAssistant, mock_endpoin
     mock_response.text = AsyncMock(return_value="Success")
     mock_response.headers = {}
 
-    mock_session = AsyncMock()
-    mock_session.request = AsyncMock(return_value=mock_response)
-    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session.__aexit__ = AsyncMock(return_value=None)
+    mock_session = make_session(mock_response)
 
     save_callback = AsyncMock()
     api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, save_callback)
@@ -329,7 +305,6 @@ async def test_api_call_with_invalid_json_body(hass: HomeAssistant, mock_endpoin
 # haapi_response event + change detection (integration triggers, 2.7.0)
 # ---------------------------------------------------------------------------
 
-from homeassistant.core import HomeAssistant as _HA  # noqa: E402
 from pytest_homeassistant_custom_component.common import async_capture_events  # noqa: E402
 
 from custom_components.haapi.const import (  # noqa: E402
@@ -346,22 +321,8 @@ from custom_components.haapi.const import (  # noqa: E402
 )
 
 
-def _mock_client_session(status, body, headers=None):
-    """Build an aiohttp.ClientSession mock that behaves as an async CM."""
-    response = AsyncMock()
-    response.status = status
-    response.text = AsyncMock(return_value=body)
-    response.headers = headers or {}
-
-    req_cm = MagicMock()
-    req_cm.__aenter__ = AsyncMock(return_value=response)
-    req_cm.__aexit__ = AsyncMock(return_value=None)
-
-    session = MagicMock()
-    session.request = MagicMock(return_value=req_cm)
-    session.__aenter__ = AsyncMock(return_value=session)
-    session.__aexit__ = AsyncMock(return_value=None)
-    return session
+from tests.helpers import make_session  # noqa: E402
+from tests.helpers import mock_client_session as _mock_client_session  # noqa: E402
 
 
 async def test_response_event_fired(hass: HomeAssistant, mock_endpoint_config) -> None:

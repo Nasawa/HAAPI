@@ -15,6 +15,7 @@ async def test_button_press(hass: HomeAssistant, mock_config_entry_data, mock_co
         domain=DOMAIN,
         data=mock_config_entry_data,
         options=mock_config_entry_options,
+        version=2,
     )
     entry.add_to_hass(hass)
 
