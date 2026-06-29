@@ -9,6 +9,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - [Configuration](#configuration)
 - [Entities](#entities)
 - [Triggers](#triggers)
+- [Conditions](#conditions)
 - [Usage](#usage)
   - [Quick Start Examples](#quick-start-examples)
   - [Template Support](#template-support)
@@ -28,7 +29,8 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - **Template Support**: Use Jinja2 templates in URLs, headers, and request bodies
 - **Multiple Auth Types**: None, Basic, Bearer Token, or API Key authentication
 - **Response Storage**: Capture HTTP status codes, response bodies, and headers
-- **Integration Triggers**: React to call completions directly in automations (success, failure, response changed, status changed) — no `delay` + state-watch workarounds
+- **Integration Triggers**: React to call completions directly in automations (success, failure, response/status changed, body/JSON-field match) — no `delay` + state-watch workarounds
+- **Integration Conditions**: Gate automations on the last call's result (succeeded, body contains, JSON field is) without templating
 - **Modern HA Standards**: Built with config flow and proper entity platforms
 
 ## Installation
@@ -186,6 +188,35 @@ automation:
       - action: notify.mobile_app
         data:
           message: "Print finished"
+```
+
+## Conditions
+
+*Requires Home Assistant 2026.7 or later.*
+
+HAAPI also provides integration-specific **conditions** so an automation can gate on the result of an endpoint's most recent call without templating. Each condition targets one or more endpoint devices (with multiple, all must satisfy it) and is evaluated live against the stored response.
+
+| Condition | Passes when |
+| --- | --- |
+| **Last call succeeded** | The endpoint's last call returned a `2xx` status. |
+| **Response contains** | The last response body matches a regex (`pattern`). |
+| **Response value is** | A JSON field (`path`) `equals` a value or matches a `pattern`. With neither, passes whenever the path resolves. |
+
+**Example** — only act if the last status fetch succeeded:
+```yaml
+automation:
+  - alias: "Refresh only when API is healthy"
+    trigger:
+      - trigger: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: haapi.last_call_succeeded
+        target:
+          device_id: <your HAAPI endpoint device>
+    action:
+      - action: button.press
+        target:
+          entity_id: button.my_endpoint_trigger
 ```
 
 ## Usage

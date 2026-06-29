@@ -9,7 +9,6 @@ integration fires on every completed call.
 
 from __future__ import annotations
 
-import json
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -51,6 +50,10 @@ from .const import (
     DOMAIN,
     EVENT_HAAPI_RESPONSE,
 )
+from .matching import UNSET as _UNSET
+from .matching import resolve_path as _resolve_path
+from .matching import valid_regex as _valid_regex
+from .matching import value_text
 
 # Keys every subclass reads off the event payload; used to drop malformed
 # haapi_response events fired by foreign automations on the global bus.
@@ -68,49 +71,6 @@ _REQUIRED_EVENT_KEYS = frozenset(
         ATTR_PREVIOUS_BODY,
     }
 )
-
-# Sentinel for "path not resolvable" (distinct from a real None value).
-_UNSET = object()
-
-
-def _resolve_path(body: str | None, path: str) -> Any:
-    """Resolve a dotted path (e.g. ``state`` or ``ams.0.humidity``) in a JSON body.
-
-    Returns the value at the path, or ``_UNSET`` if the body is not JSON or the
-    path does not resolve. List indices are written as integers in the path.
-    """
-    if body is None:
-        return _UNSET
-    try:
-        current = json.loads(body)
-    except (ValueError, TypeError):
-        return _UNSET
-    for part in path.split("."):
-        if isinstance(current, dict):
-            if part not in current:
-                return _UNSET
-            current = current[part]
-        elif isinstance(current, list):
-            try:
-                index = int(part)
-            except ValueError:
-                return _UNSET
-            # Non-negative indices only (JSON-pointer style); reject negatives.
-            if not 0 <= index < len(current):
-                return _UNSET
-            current = current[index]
-        else:
-            return _UNSET
-    return current
-
-
-def _valid_regex(value: str) -> str:
-    """Validate that a string compiles as a regex."""
-    try:
-        re.compile(value)
-    except re.error as err:
-        raise vol.Invalid(f"Invalid regular expression: {err}") from err
-    return value
 
 _BASE_TRIGGER_SCHEMA = vol.Schema(
     {
@@ -328,7 +288,7 @@ class ValueMatchesTrigger(HaapiTrigger):
             return True
         # Compare against the JSON spelling so booleans/null/numbers match what
         # users see in the body (true/false/null/100.0); raw strings unquoted.
-        text = value if isinstance(value, str) else json.dumps(value)
+        text = value_text(value)
         if equals is not None and text != str(equals):
             return False
         if pattern is not None and re.search(pattern, text) is None:
