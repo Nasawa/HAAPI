@@ -1,0 +1,37 @@
+.endpoint_target: &endpoint_target
+  target:
+    device:
+      integration: haapi
+
+last_call_succeeded: *endpoint_target
+
+response_contains:
+  target:
+    device:
+      integration: haapi
+  fields:
+    pattern:
+      required: true
+      example: '"state":\s*"FINISH"'
+      selector:
+        text:
+
+value_is:
+  target:
+    device:
+      integration: haapi
+  fields:
+    path:
+      required: true
+      example: state
+      selector:
+        text:
+    equals:
+      required: false
+      example: FINISH
+      selector:
+        text:
+    pattern:
+      required: false
+      selector:
+        text:

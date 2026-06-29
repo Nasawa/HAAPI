@@ -219,5 +219,39 @@
       "name": "Went down",
       "description": "Triggers when a call fails after the previous call to the endpoint had succeeded (2xx)."
     }
+  },
+  "conditions": {
+    "last_call_succeeded": {
+      "name": "Last call succeeded",
+      "description": "Passes when the endpoint's last call returned a 2xx status."
+    },
+    "response_contains": {
+      "name": "Response contains",
+      "description": "Passes when the endpoint's last response body matches a regular expression.",
+      "fields": {
+        "pattern": {
+          "name": "Pattern",
+          "description": "Regular expression to search for anywhere in the last response body."
+        }
+      }
+    },
+    "value_is": {
+      "name": "Response value is",
+      "description": "Passes when a field in the last JSON response body equals or matches a value.",
+      "fields": {
+        "path": {
+          "name": "Field path",
+          "description": "Dotted path to the field, e.g. 'state' or 'ams.0.humidity' (list items by index)."
+        },
+        "equals": {
+          "name": "Equals",
+          "description": "Pass only when the field equals this value (string comparison). Leave empty to skip."
+        },
+        "pattern": {
+          "name": "Pattern",
+          "description": "Pass only when the field matches this regular expression. Leave empty to skip."
+        }
+      }
+    }
   }
 }
