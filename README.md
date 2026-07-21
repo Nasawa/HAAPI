@@ -1,4 +1,16 @@
+<p align="center">
+  <img src="assets/wordmark.png" alt="HAAPI" width="360">
+</p>
+
 # HAAPI - Home Assistant API Integration
+
+<p align="center">
+  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg" alt="HACS Custom"></a>
+  <a href="https://github.com/Nasawa/HAAPI/releases"><img src="https://img.shields.io/github/v/release/Nasawa/HAAPI" alt="Latest release"></a>
+  <a href="https://github.com/Nasawa/HAAPI/actions/workflows/ci.yml"><img src="https://github.com/Nasawa/HAAPI/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Nasawa/HAAPI" alt="License: MIT"></a>
+  <a href="https://ko-fi.com/anigeekapps"><img src="https://img.shields.io/badge/Ko--fi-Support-FF5E5B.svg?logo=ko-fi&logoColor=white" alt="Support on Ko-fi"></a>
+</p>
 
 A universal API integration framework for Home Assistant 2025.11+ where each "device" represents one API endpoint. Configure and trigger API calls with responses stored as entity states and attributes.
 
@@ -23,6 +35,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - [Development](#development)
 - [Translations](#translations)
 - [Contributing](#contributing)
+- [Credits & origin](#credits--origin)
 
 ## Features
 
@@ -42,7 +55,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 1. Open HACS in your Home Assistant instance
 2. Go to "Integrations"
 3. Click the three dots in the top right and select "Custom repositories"
-4. Add this repository URL with category "Integration"
+4. Add `https://github.com/Nasawa/HAAPI` as a custom repository with category "Integration"
 5. Click "Install"
 6. Restart Home Assistant
 
@@ -298,7 +311,7 @@ automation:
 - Body:
   ```json
   {
-    "temperature": {{ states('sensor.living_room_temperature') }},
+    "temperature": "{{ states('sensor.living_room_temperature') }}",
     "timestamp": "{{ now().isoformat() }}"
   }
   ```
@@ -524,14 +537,23 @@ Your contributions help make HAAPI accessible to users worldwide!
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+**Pull requests and issues are welcome — HAAPI is a community-open MIT project.** If HAAPI is useful to you, help make it better: file a bug, suggest a feature, improve the docs, or send a fix. You don't need permission to get started.
+
+- **Found a bug or have an idea?** [Open an issue](https://github.com/Nasawa/HAAPI/issues) — clear reports and feature requests are genuinely appreciated.
+- **Want to send a change?** Fork the repo, create a branch, and open a PR. Small, focused PRs are easiest to review and merge.
+- **Running the tests:** `pip install -r requirements_test.txt` then `python -m pytest -q`. Every PR runs the same checks in CI — pytest, [hassfest](https://developers.home-assistant.io/docs/creating_integration_manifest/), and HACS validation — so you can see exactly what will run before you push.
+- **Translations** are especially welcome: the non-English strings are community-reviewable, and native-speaker corrections are exactly the kind of contribution this project wants.
+
+New contributors are welcome regardless of experience level. If something's unclear, open an issue and ask.
+
+## Credits & origin
+
+HAAPI was created by **Christopher** ([@Nasawa](https://github.com/Nasawa)) together with **Claw**, his AI partner — Christopher owning the idea, design, and direction, and Claw doing much of the implementation under that direction. We credit it this way because that's how it was honestly built, not to fence it off.
+
+**HAAPI is open to everyone.** Made here, built for the whole Home Assistant community: it's MIT-licensed, and your issues, ideas, and pull requests are genuinely wanted (see [Contributing](#contributing)). The origin story and the open door are both true at once — knowing who started it takes nothing away from its being yours to use, fork, and improve.
+
+Built and maintained against Home Assistant 2026.7+, and dogfooded daily in our own homes — HAAPI runs the authors' real routines, not just the [Cat Facts API](https://catfact.ninja/) demo.
 
 ## License
 
-This project is licensed under the MIT License.
-
-## Credits
-
-Created for Home Assistant 2025.11+
-
-Tested with [Cat Facts API](https://catfact.ninja/)
+This project is licensed under the [MIT License](LICENSE).
