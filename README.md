@@ -552,8 +552,8 @@ HAAPI was created by **Christopher** ([@Nasawa](https://github.com/Nasawa)) toge
 
 **HAAPI is open to everyone.** Made here, built for the whole Home Assistant community: it's MIT-licensed, and your issues, ideas, and pull requests are genuinely wanted (see [Contributing](#contributing)). The origin story and the open door are both true at once — knowing who started it takes nothing away from its being yours to use, fork, and improve.
 
-Built for Home Assistant 2025.11+ and tested with the [Cat Facts API](https://catfact.ninja/).
+Built and maintained against Home Assistant 2026.7+, and dogfooded daily in our own homes — HAAPI runs the authors' real routines, not just the [Cat Facts API](https://catfact.ninja/) demo.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the [MIT License](LICENSE).
