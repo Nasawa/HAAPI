@@ -311,7 +311,7 @@ automation:
 - Body:
   ```json
   {
-    "temperature": {{ states('sensor.living_room_temperature') }},
+    "temperature": "{{ states('sensor.living_room_temperature') }}",
     "timestamp": "{{ now().isoformat() }}"
   }
   ```
