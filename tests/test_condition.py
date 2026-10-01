@@ -6,12 +6,13 @@ from unittest.mock import patch
 import pytest
 import voluptuous as vol
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.condition import ConditionConfig
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.haapi import condition as cond
 from custom_components.haapi.const import DOMAIN
+
+from tests.helpers import get_endpoint_device
 
 _ENDPOINT_ID = "test-endpoint-id"
 
@@ -32,9 +33,7 @@ async def endpoint(hass, mock_config_entry_data, mock_config_entry_options):
 
     coordinator = hass.data[DOMAIN][entry.entry_id]
     caller = coordinator.get_api_caller(_ENDPOINT_ID)
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, f"{entry.entry_id}_{_ENDPOINT_ID}")}
-    )
+    device = get_endpoint_device(hass, entry.entry_id, _ENDPOINT_ID)
     assert device is not None, "HAAPI endpoint device was not created"
     return SimpleNamespace(caller=caller, device_id=device.id)
 

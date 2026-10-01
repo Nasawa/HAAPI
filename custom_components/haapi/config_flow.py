@@ -393,7 +393,17 @@ class HaapiOptionsFlowHandler(config_entries.OptionsFlow):
             # Remove the device associated with this endpoint
             device_registry = dr.async_get(self.hass)
             device_identifier = (DOMAIN, f"{self.config_entry.entry_id}_{endpoint_id_to_remove}")
-            device_entry = device_registry.async_get_device(identifiers={device_identifier})
+            # HA 2026.8 added async_get_device_by_identifier (scoped to a config
+            # entry); 2026.10 deprecates async_get_device (breaks in 2027.8).
+            # Fall back to the old call on HA versions that predate the new one.
+            if hasattr(device_registry, "async_get_device_by_identifier"):
+                device_entry = device_registry.async_get_device_by_identifier(
+                    device_identifier, self.config_entry.entry_id
+                )
+            else:
+                device_entry = device_registry.async_get_device(
+                    identifiers={device_identifier}
+                )
 
             if device_entry:
                 device_registry.async_remove_device(device_entry.id)

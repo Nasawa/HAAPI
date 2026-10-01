@@ -7,6 +7,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.haapi.const import (
@@ -33,6 +34,8 @@ from custom_components.haapi.const import (
     DEFAULT_VERIFY_SSL,
     DOMAIN,
 )
+
+from tests.helpers import get_endpoint_device
 
 
 async def test_form(hass: HomeAssistant) -> None:
@@ -188,6 +191,14 @@ async def test_options_remove_endpoint(hass: HomeAssistant, mock_config_entry_da
     )
     entry.add_to_hass(hass)
 
+    # Register the endpoint's device so the flow's device lookup/removal runs.
+    endpoint_id = mock_endpoint_config[CONF_ENDPOINT_ID]
+    dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{entry.entry_id}_{endpoint_id}")},
+    )
+    assert get_endpoint_device(hass, entry.entry_id, endpoint_id) is not None
+
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] == FlowResultType.MENU
 
@@ -206,3 +217,4 @@ async def test_options_remove_endpoint(hass: HomeAssistant, mock_config_entry_da
 
     endpoints = result3["data"][CONF_ENDPOINTS]
     assert len(endpoints) == 0
+    assert get_endpoint_device(hass, entry.entry_id, endpoint_id) is None
