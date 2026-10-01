@@ -5,7 +5,6 @@ from unittest.mock import patch
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.haapi.const import (
@@ -16,7 +15,7 @@ from custom_components.haapi.const import (
     DOMAIN,
 )
 
-from tests.helpers import make_response, make_session
+from tests.helpers import get_endpoint_device, make_response, make_session
 
 _ENDPOINT_ID = "test-endpoint-id"
 
@@ -34,9 +33,7 @@ async def loaded(hass, mock_config_entry_data, mock_config_entry_options):
     with patch("custom_components.haapi.Store.async_load", return_value={}):
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, f"{entry.entry_id}_{_ENDPOINT_ID}")}
-    )
+    device = get_endpoint_device(hass, entry.entry_id, _ENDPOINT_ID)
     assert device is not None, "HAAPI endpoint device was not created"
     return device.id
 

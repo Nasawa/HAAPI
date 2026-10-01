@@ -11,6 +11,10 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
+from homeassistant.helpers import device_registry as dr
+
+from custom_components.haapi.const import DOMAIN
+
 
 def make_response(status, body, headers=None):
     """Build a mock aiohttp response with the given status/body/headers."""
@@ -72,3 +76,17 @@ def make_session(*responses, raise_exc=None):
 def mock_client_session(status, body, headers=None):
     """Convenience: a session whose single response has the given status/body."""
     return make_session(make_response(status, body, headers))
+
+
+def get_endpoint_device(hass, entry_id, endpoint_id):
+    """Look up a HAAPI endpoint device the way the integration does.
+
+    Uses ``async_get_device_by_identifier`` (HA 2026.8+) when available, since
+    ``async_get_device`` is deprecated from HA 2026.10 (breaks in 2027.8) and
+    raises when called from non-integration code; falls back on older HA.
+    """
+    dev_reg = dr.async_get(hass)
+    identifier = (DOMAIN, f"{entry_id}_{endpoint_id}")
+    if hasattr(dev_reg, "async_get_device_by_identifier"):
+        return dev_reg.async_get_device_by_identifier(identifier, entry_id)
+    return dev_reg.async_get_device(identifiers={identifier})
