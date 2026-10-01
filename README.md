@@ -34,6 +34,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
   - [Test Servers](#test-servers)
 - [Development](#development)
 - [Translations](#translations)
+- [Releases](#releases)
 - [Contributing](#contributing)
 - [Credits & origin](#credits--origin)
 
@@ -534,6 +535,10 @@ To add a new language:
 Your contributions help make HAAPI accessible to users worldwide!
 
 </details>
+
+## Releases
+
+Releases are automatic. When a push to `main` changes `version` in `custom_components/haapi/manifest.json` and CI passes, the [Release workflow](.github/workflows/release.yml) creates the `v<version>` tag and a GitHub Release with auto-generated notes, which HACS picks up. Pushes that don't change the version do nothing. To ship a release, bump the manifest version in your PR.
 
 ## Contributing
 
