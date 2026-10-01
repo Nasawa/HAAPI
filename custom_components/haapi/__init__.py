@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import Any
 
 import aiohttp
-import async_timeout
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -399,7 +398,7 @@ class HaapiApiCaller:
                 await asyncio.sleep(retry_delay)
 
             try:
-                async with async_timeout.timeout(timeout):
+                async with asyncio.timeout(timeout):
                     connector = aiohttp.TCPConnector(ssl=ssl_context if ssl_context else True)
                     async with aiohttp.ClientSession(connector=connector) as session:
                         # Prepare request kwargs
