@@ -9,7 +9,7 @@ endpoint device(s); with multiple targets, all must satisfy the condition.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 
@@ -17,7 +17,7 @@ from homeassistant.const import CONF_OPTIONS, CONF_TARGET
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.condition import Condition
-from homeassistant.helpers.typing import ConfigType, TemplateVarsType
+from homeassistant.helpers.typing import ConfigType
 
 from .const import CONF_EQUALS, CONF_PATH, CONF_PATTERN
 from .matching import UNSET, resolve_path, valid_regex, value_text
@@ -80,15 +80,32 @@ class HaapiCondition(Condition):
         """Return whether a single endpoint's last response satisfies this."""
         raise NotImplementedError
 
+    def _evaluate(self) -> bool:
+        """Evaluate the condition against the targeted endpoints' live state."""
+        callers = endpoint_callers(self._hass, self._target)
+        if not callers:
+            return False
+        return all(self._predicate(caller) for caller in callers)
+
+    # HA 2026.5+: a Condition *is* its own checker. HA sets it up and calls
+    # ``async_check`` -> ``_async_check``, which is abstract there, so a
+    # Condition without it cannot even be instantiated (TypeError).
+    def _async_check(self, **kwargs: Any) -> bool:
+        """Check the condition (HA 2026.5+ checker contract)."""
+        return self._evaluate()
+
+    # HA < 2026.5: HA awaits ``async_get_checker`` for a checker callable. Its
+    # calling convention changed underneath us: 2025.11-2025.12 call it as
+    # ``checker(hass, variables)``, 2026.1-2026.4 as ``checker(variables=...)``
+    # (keyword-only ``ConditionChecker`` protocol). The verdict never depends
+    # on the arguments, so accept both. Unused (and harmless) on HA 2026.5+;
+    # kept so the 2025.11+ floor in hacs.json stays honest.
     async def async_get_checker(self) -> ConditionChecker:
-        """Return a checker that evaluates the condition against live state."""
+        """Return a checker callable (pre-HA 2026.5 contract)."""
 
         @callback
-        def _check(hass: HomeAssistant, variables: TemplateVarsType) -> bool:
-            callers = endpoint_callers(self._hass, self._target)
-            if not callers:
-                return False
-            return all(self._predicate(caller) for caller in callers)
+        def _check(*args: Any, **kwargs: Any) -> bool:
+            return self._evaluate()
 
         return _check
 
