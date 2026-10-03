@@ -1,6 +1,6 @@
 {
   "domain": "haapi",
-  "name": "HAAPI - Home Assistant API Integration",
+  "name": "HAAPI",
   "codeowners": ["@Nasawa"],
   "config_flow": true,
   "dependencies": [],
