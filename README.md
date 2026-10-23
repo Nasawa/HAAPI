@@ -46,7 +46,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - **Response Storage**: Capture HTTP status codes, response bodies, and headers
 - **Integration Triggers**: React to call completions directly in automations (success, failure, response/status changed, body/JSON-field match) — no `delay` + state-watch workarounds
 - **Integration Conditions**: Gate automations on the last call's result (succeeded, body contains, JSON field is) without templating
-- **Request Action**: `haapi.request` calls an endpoint and returns its response in the same step (`response_variable`) — no button + wait/delay race
+- **Request Action**: `haapi.request` calls an endpoint and returns its response in the same step (`response_variable`) — no button + wait/delay race; optional per-call `variables` and `body` override
 - **Modern HA Standards**: Built with config flow and proper entity platforms
 
 ## Installation
@@ -263,6 +263,43 @@ automation:
 ```
 
 This is the synchronous counterpart to the endpoint's **Trigger** button: the button is fire-and-forget (great for dashboards), while `haapi.request` awaits the call and hands you the response.
+
+#### Per-call data: `variables` and `body`
+
+`haapi.request` accepts two optional fields. Both apply to **that one call only** — the stored endpoint is never changed, and calls without them (and Trigger button presses) behave exactly as before.
+
+| Field | Type | What it does |
+|-------|------|--------------|
+| `variables` | mapping | Extra template variables for this call. Each name is available in the endpoint's URL, headers, body and auth templates (e.g. `{{ message }}`), alongside the usual HA state functions. |
+| `body` | string | Replaces the endpoint's configured body for this call. It is rendered as a template with the same `variables`. Omit it to use the configured body. |
+
+This removes the need to stash per-call values in helpers first (an `input_text` is capped at 255 characters; `variables` has no such limit).
+
+Endpoint configured with **Content-Type** `application/json` and **Body**:
+
+```jinja
+{"text": {{ message | tojson }}, "satellite": {{ satellite | tojson }}, "urgent": {{ urgent | default(false) | tojson }}}
+```
+
+Automation:
+
+```yaml
+- action: haapi.request
+  target:
+    entity_id: button.announce_trigger
+  data:
+    variables:
+      message: "{{ trigger.event.data.message }}"
+      satellite: "{{ trigger.event.data.satellite }}"
+      urgent: true
+  response_variable: result
+```
+
+Tips:
+- Use `| tojson` when inserting a variable into a JSON body: it adds the quotes and escapes quotes, backslashes, newlines and non-ASCII correctly, so arbitrary text (any length) stays valid JSON. Use `| urlencode` for URL query values.
+- Variable *values* are data, not templates: text such as `{{ ... }}` inside a value is sent literally, never rendered. Prefer `variables` + a templated endpoint body for untrusted text (voice transcripts, messages).
+- Home Assistant renders templates in an action's `data` before HAAPI sees it, so a `body:` written in an automation is usually already final text. HA may turn a value that looks like a number or boolean into one (e.g. `"123"` → `123`); add `| string` in the endpoint template if you need it quoted.
+- A `body` given as a mapping/list (e.g. one HA already parsed from JSON) is sent re-serialized as JSON.
 
 ## Usage
 

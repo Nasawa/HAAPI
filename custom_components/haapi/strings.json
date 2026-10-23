@@ -258,7 +258,16 @@
     "request": {
       "name": "Request",
       "description": "Call a HAAPI endpoint and return its response (status, ok, body, headers) for use with response_variable.",
-      "fields": {}
+      "fields": {
+        "variables": {
+          "name": "Variables",
+          "description": "Per-call template variables, e.g. message: Hello. Each name can be used in the endpoint's URL, headers, body and auth templates for this call only; the stored endpoint is not changed."
+        },
+        "body": {
+          "name": "Body",
+          "description": "Overrides the endpoint's configured body for this call only. Rendered as a template with the same variables. Leave empty to use the configured body."
+        }
+      }
     }
   }
 }

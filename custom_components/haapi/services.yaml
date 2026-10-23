@@ -3,3 +3,15 @@ request:
     entity:
       integration: haapi
       domain: button
+  fields:
+    variables:
+      required: false
+      example: '{"message": "Dinner is ready", "urgent": true}'
+      selector:
+        object:
+    body:
+      required: false
+      example: '{"text": {{ message | tojson }}}'
+      selector:
+        text:
+          multiline: true

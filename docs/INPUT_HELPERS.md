@@ -2,6 +2,8 @@
 
 HAAPI templates work seamlessly with all Home Assistant input helpers, enabling dynamic user-controlled API configurations without editing YAML files. This is especially powerful for creating user-friendly interfaces where non-technical users can control API parameters.
 
+> **Per-call values from an automation?** If the value only matters for one call (a message to send, an ID from a trigger), you don't need a helper: pass it with `haapi.request`'s `variables` field instead and reference it as `{{ name }}` in the endpoint templates. See [Per-call data](../README.md#per-call-data-variables-and-body). Helpers remain the right tool for values users set from the UI.
+
 ## Supported Input Helpers
 
 - `input_text` - Text input for dynamic strings (city names, search queries, IDs)

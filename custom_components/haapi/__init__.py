@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import ssl
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
@@ -82,6 +83,36 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 SERVICE_REQUEST = "request"
 
+# Optional per-call fields of haapi.request. Neither is ever stored: they apply
+# to that one call only and leave the endpoint's configuration untouched.
+ATTR_VARIABLES = "variables"
+ATTR_BODY_OVERRIDE = "body"
+
+
+def _request_overrides(
+    data: dict[str, Any],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Validate and extract (variables, body override) from request call data."""
+    variables = data.get(ATTR_VARIABLES)
+    if variables is not None and not isinstance(variables, Mapping):
+        raise ServiceValidationError(
+            "haapi.request: 'variables' must be a mapping of name: value"
+        )
+
+    body = data.get(ATTR_BODY_OVERRIDE)
+    if body is not None and not isinstance(body, str):
+        if isinstance(body, (dict, list)):
+            # HA renders templates in action data before calling us, and a
+            # rendered JSON string comes back as a dict/list: re-serialize it.
+            body = json.dumps(body)
+        elif isinstance(body, (int, float)):
+            body = str(body)
+        else:
+            raise ServiceValidationError(
+                "haapi.request: 'body' must be a string"
+            )
+    return (dict(variables) if variables else None), body
+
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up HAAPI (registers the request action)."""
@@ -95,7 +126,10 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 f"HAAPI endpoint (resolved {len(callers)})"
             )
         caller = callers[0]
-        await caller.async_call_api()
+        variables, body_override = _request_overrides(call.data)
+        await caller.async_call_api(
+            variables=variables, body_override=body_override
+        )
         status = caller.last_response_code or 0
         return {
             ATTR_ENDPOINT_ID: caller.endpoint_id,
@@ -276,28 +310,32 @@ class HaapiApiCaller:
         for listener in self._listeners:
             listener()
 
-    def _render_template(self, template_str: str) -> str:
-        """Render a Jinja2 template."""
+    def _render_template(
+        self, template_str: str, variables: dict[str, Any] | None = None
+    ) -> str:
+        """Render a Jinja2 template, with optional per-call variables."""
         if not template_str:
             return ""
 
         try:
             tpl = template.Template(template_str, self.hass)
-            rendered = tpl.async_render()
+            rendered = tpl.async_render(variables)
             # Convert to string in case it returns a Wrapper object
             return str(rendered)
         except TemplateError as err:
             _LOGGER.error("Error rendering template: %s", err)
             return template_str
 
-    def _parse_headers(self, headers_str: str) -> dict[str, str]:
+    def _parse_headers(
+        self, headers_str: str, variables: dict[str, Any] | None = None
+    ) -> dict[str, str]:
         """Parse headers from string format."""
         headers = {}
         if not headers_str:
             return headers
 
         # Render template first
-        rendered = self._render_template(headers_str)
+        rendered = self._render_template(headers_str, variables)
 
         # Parse headers (format: "Key1: Value1\nKey2: Value2")
         for line in rendered.split("\n"):
@@ -308,7 +346,9 @@ class HaapiApiCaller:
 
         return headers
 
-    def _get_auth_headers(self) -> dict[str, str]:
+    def _get_auth_headers(
+        self, variables: dict[str, Any] | None = None
+    ) -> dict[str, str]:
         """Get authentication headers based on auth type."""
         headers = {}
         auth_type = self.endpoint_config.get(CONF_AUTH_TYPE)
@@ -316,31 +356,48 @@ class HaapiApiCaller:
         if auth_type == AUTH_BEARER:
             token = self.endpoint_config.get(CONF_BEARER_TOKEN)
             if token:
-                rendered_token = self._render_template(token)
+                rendered_token = self._render_template(token, variables)
                 headers["Authorization"] = f"Bearer {rendered_token}"
 
         elif auth_type == AUTH_API_KEY:
             api_key = self.endpoint_config.get(CONF_API_KEY)
             if api_key:
-                rendered_key = self._render_template(api_key)
+                rendered_key = self._render_template(api_key, variables)
                 headers["X-API-Key"] = rendered_key
 
         return headers
 
-    async def async_call_api(self) -> None:
-        """Execute the API call."""
+    async def async_call_api(
+        self,
+        variables: dict[str, Any] | None = None,
+        body_override: str | None = None,
+    ) -> None:
+        """Execute the API call.
+
+        ``variables`` are made available to the url/headers/body/auth templates
+        for this call only. ``body_override`` (itself a template, rendered with
+        the same variables) replaces the configured body for this call only.
+        Neither touches ``endpoint_config``.
+        """
         # Capture the prior result so we can report what changed after the call.
         prev_code = self._last_response_code
         prev_body = self._last_response_body
 
-        url = self._render_template(self.endpoint_config[CONF_URL])
+        url = self._render_template(self.endpoint_config[CONF_URL], variables)
         method = self.endpoint_config[CONF_METHOD]
-        headers = self._parse_headers(self.endpoint_config.get(CONF_HEADERS, ""))
-        body = self._render_template(self.endpoint_config.get(CONF_BODY, ""))
+        headers = self._parse_headers(
+            self.endpoint_config.get(CONF_HEADERS, ""), variables
+        )
+        body_template = (
+            body_override
+            if body_override is not None
+            else self.endpoint_config.get(CONF_BODY, "")
+        )
+        body = self._render_template(body_template, variables)
         content_type = self.endpoint_config.get(CONF_CONTENT_TYPE)
 
         # Add authentication headers
-        headers.update(self._get_auth_headers())
+        headers.update(self._get_auth_headers(variables))
 
         # Add content type if body is present
         if body and content_type:
@@ -352,8 +409,8 @@ class HaapiApiCaller:
             username = self.endpoint_config.get(CONF_USERNAME)
             password = self.endpoint_config.get(CONF_PASSWORD)
             if username and password:
-                rendered_username = self._render_template(username)
-                rendered_password = self._render_template(password)
+                rendered_username = self._render_template(username, variables)
+                rendered_password = self._render_template(password, variables)
                 auth = aiohttp.BasicAuth(rendered_username, rendered_password)
                 _LOGGER.debug("Using Basic Auth with username: %s", rendered_username)
             else:
