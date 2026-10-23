@@ -265,7 +265,7 @@
         },
         "body": {
           "name": "Body",
-          "description": "Overrides the endpoint's configured body for this call only. Rendered as a template with the same variables. Leave empty to use the configured body."
+          "description": "Overrides the endpoint's configured body for this call only. Sent exactly as given (it is not rendered again: Home Assistant already rendered any templates in the action). To insert values into the endpoint's own body template, use Variables instead. Leave empty to use the configured body."
         }
       }
     }

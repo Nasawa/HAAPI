@@ -271,11 +271,11 @@ This is the synchronous counterpart to the endpoint's **Trigger** button: the bu
 | Field | Type | What it does |
 |-------|------|--------------|
 | `variables` | mapping | Extra template variables for this call. Each name is available in the endpoint's URL, headers, body and auth templates (e.g. `{{ message }}`), alongside the usual HA state functions. |
-| `body` | string | Replaces the endpoint's configured body for this call. It is rendered as a template with the same `variables`. Omit it to use the configured body. |
+| `body` | string | Replaces the endpoint's configured body for this call, sent **as final text**: HAAPI does not render it again (Home Assistant already rendered any templates in the action's `data`). Omit it, or leave it empty, to use the configured body. |
 
 This removes the need to stash per-call values in helpers first (an `input_text` is capped at 255 characters; `variables` has no such limit).
 
-Endpoint configured with **Content-Type** `application/json` and **Body**:
+**Recommended: `variables` + a templated endpoint body.** The endpoint's own templates are where per-call values get inserted (and safely JSON-escaped). Endpoint configured with **Content-Type** `application/json` and **Body**:
 
 ```jinja
 {"text": {{ message | tojson }}, "satellite": {{ satellite | tojson }}, "urgent": {{ urgent | default(false) | tojson }}}
@@ -295,11 +295,23 @@ Automation:
   response_variable: result
 ```
 
+**`body` override: a complete, ready-to-send body.** Use it when this one call needs a different payload altogether. Whatever HA hands over is sent as-is — any templates in it were rendered by HA in the automation, and their *output* is never rendered a second time (so text such as `{{ states(...) }}` arriving in a message stays literal):
+
+```yaml
+- action: haapi.request
+  target:
+    entity_id: button.announce_trigger
+  data:
+    body: '{"text": "Dinner is ready", "urgent": true}'
+```
+
+`variables` are not applied to `body` (they only feed the endpoint's templates), so don't write `{{ message }}` in `body` expecting it to come from `variables` — in an automation HA evaluates it first, where `message` is undefined. If you build `body` from automation data in a template, escape it yourself (e.g. `'{"text": {{ trigger.event.data.message | tojson }}}'`); the `variables` pattern above does that for you.
+
 Tips:
 - Use `| tojson` when inserting a variable into a JSON body: it adds the quotes and escapes quotes, backslashes, newlines and non-ASCII correctly, so arbitrary text (any length) stays valid JSON. Use `| urlencode` for URL query values.
 - Variable *values* are data, not templates: text such as `{{ ... }}` inside a value is sent literally, never rendered. Prefer `variables` + a templated endpoint body for untrusted text (voice transcripts, messages).
-- Home Assistant renders templates in an action's `data` before HAAPI sees it, so a `body:` written in an automation is usually already final text. HA may turn a value that looks like a number or boolean into one (e.g. `"123"` → `123`); add `| string` in the endpoint template if you need it quoted.
-- A `body` given as a mapping/list (e.g. one HA already parsed from JSON) is sent re-serialized as JSON.
+- Home Assistant renders templates in an action's `data` before HAAPI sees it, so a `body:` written in an automation is usually already final text. HA may turn a value that looks like a number or boolean into one (e.g. `"123"` → `123`); add `| string` in the endpoint template if you need it quoted. This coercion only affects *templated* values; a static string such as `"123"` written without a template stays a string.
+- A `body` given as a mapping/list (e.g. one HA already parsed from JSON), or a bare boolean, is sent re-serialized as JSON (`true`, not `True`).
 
 ## Usage
 

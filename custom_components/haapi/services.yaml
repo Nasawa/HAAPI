@@ -11,7 +11,7 @@ request:
         object:
     body:
       required: false
-      example: '{"text": {{ message | tojson }}}'
+      example: '{"text": "Dinner is ready"}'
       selector:
         text:
           multiline: true

@@ -1,5 +1,6 @@
 """Tests for haapi.request per-call `variables` and `body` override."""
 
+import asyncio
 from unittest.mock import patch
 
 import pytest
@@ -17,11 +18,15 @@ from custom_components.haapi.const import (
     CONF_CONTENT_TYPE,
     CONF_HEADERS,
     CONF_METHOD,
+    CONF_RETRIES,
     CONF_URL,
     DOMAIN,
 )
 
 from tests.helpers import get_endpoint_device, make_response, make_session
+
+# Text that would leak entity state if anything rendered it a second time.
+_INJECT = "x {{ states('sun.sun') }} y"
 
 _ENDPOINT_ID = "test-endpoint-id"
 
@@ -117,13 +122,48 @@ async def test_body_override_replaces_configured_body(
     kwargs = await _request(
         hass,
         device_id,
-        variables={"message": "hello"},
-        body='{"override": {{ message | tojson }}}',
+        variables={"satellite": "kitchen"},
+        body='{"override": "hello"}',
     )
 
     assert kwargs["json"] == {"override": "hello"}
+    # variables still feed the endpoint's own templates (url, auth).
+    assert kwargs["url"] == "https://api.example.com/say/kitchen"
+    assert kwargs["headers"]["Authorization"] == "Bearer tok-kitchen"
     # The stored endpoint is untouched by the per-call override.
     assert caller.endpoint_config[CONF_BODY] == _BODY
+
+
+async def test_body_override_is_not_rendered_again(
+    hass: HomeAssistant, loaded
+) -> None:
+    """The override is final text: template syntax inside it is sent
+    literally, never evaluated (no double rendering / template injection)."""
+    hass.states.async_set("sun.sun", "above_horizon")
+    device_id, _ = loaded
+    body = '{"text": "' + _INJECT + '", "m": "{{ message }}"}'
+    kwargs = await _request(
+        hass, device_id, variables={"message": "SHOULD-NOT-APPEAR"}, body=body
+    )
+
+    assert kwargs["json"] == {"text": _INJECT, "m": "{{ message }}"}
+    assert "above_horizon" not in str(kwargs)
+
+
+async def test_empty_body_override_uses_configured_body(
+    hass: HomeAssistant, loaded
+) -> None:
+    """A blank body field means "not set", same as omitting it."""
+    device_id, _ = loaded
+    kwargs = await _request(hass, device_id, variables={"message": "hi"}, body="")
+    assert kwargs["json"] == {"text": "hi", "urgent": False}
+
+
+async def test_bool_body_override_is_json(hass: HomeAssistant, loaded) -> None:
+    """bool is an int subclass; it must be sent as JSON true, not "True"."""
+    device_id, _ = loaded
+    kwargs = await _request(hass, device_id, body=True)
+    assert kwargs["json"] is True
 
 
 async def test_body_override_as_prerendered_mapping(
@@ -208,6 +248,91 @@ async def test_variables_from_a_templated_automation_action(
     kwargs = session.request.call_args.kwargs
     assert kwargs["url"] == "https://api.example.com/say/office"
     assert kwargs["json"] == {"text": _NASTY, "urgent": True}
+
+
+async def test_body_from_a_templated_automation_action(
+    hass: HomeAssistant, loaded
+) -> None:
+    """A body templated in the automation is rendered by HA exactly once:
+    template syntax inside the run variable's *value* stays literal."""
+    hass.states.async_set("sun.sun", "above_horizon")
+    device_id, caller = loaded
+    script = Script(
+        hass,
+        cv.SCRIPT_SCHEMA([
+            {
+                "action": "haapi.request",
+                "target": {"device_id": device_id},
+                "data": {"body": '{"text": {{ msg | tojson }}}'},
+            }
+        ]),
+        "test",
+        DOMAIN,
+    )
+    session = make_session(make_response(200, "ok"))
+    with patch("aiohttp.ClientSession", return_value=session):
+        await script.async_run(run_variables={"msg": _INJECT}, context=Context())
+        await hass.async_block_till_done()
+
+    kwargs = session.request.call_args.kwargs
+    assert kwargs["json"] == {"text": _INJECT}
+    assert "above_horizon" not in str(kwargs)
+    assert caller.endpoint_config[CONF_BODY] == _BODY
+
+
+async def test_concurrent_requests_each_get_their_own_response(
+    hass: HomeAssistant, loaded
+) -> None:
+    """Two overlapping calls on one endpoint: each service response must
+    reflect its own HTTP result even though the shared last_response_* state
+    is overwritten by the other call while the first awaits storage."""
+    device_id, caller = loaded
+    release = asyncio.Event()
+    saves_started = 0
+
+    async def _blocked_save() -> None:
+        nonlocal saves_started
+        saves_started += 1
+        await release.wait()
+
+    caller._save_callback = _blocked_save
+    session = make_session(
+        make_response(200, "first", {"X-Call": "1"}),
+        make_response(503, "second", {"X-Call": "2"}),
+    )
+
+    async def _call():
+        return await hass.services.async_call(
+            DOMAIN,
+            "request",
+            {},
+            blocking=True,
+            return_response=True,
+            target={"device_id": [device_id]},
+        )
+
+    with patch("aiohttp.ClientSession", return_value=session), patch.object(
+        caller, "endpoint_config", {**caller.endpoint_config, CONF_RETRIES: 0}
+    ):
+        first = hass.async_create_task(_call())
+        while saves_started < 1:
+            await asyncio.sleep(0)
+        second = hass.async_create_task(_call())
+        while saves_started < 2:
+            await asyncio.sleep(0)
+        # Both calls have now written the shared state; the second won.
+        assert caller.last_response_body == "second"
+        release.set()
+        r1, r2 = await first, await second
+
+    assert (r1["status"], r1["ok"], r1["body"], r1["headers"]) == (
+        200, True, "first", {"X-Call": "1"}
+    )
+    assert (r2["status"], r2["ok"], r2["body"], r2["headers"]) == (
+        503, False, "second", {"X-Call": "2"}
+    )
+    # Sensors/storage still see the most recent result, as before.
+    assert caller.last_response_code == 503
 
 
 @pytest.mark.parametrize(
