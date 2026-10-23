@@ -6,7 +6,10 @@ import asyncio
 import json
 import logging
 import ssl
+from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime
+from types import MappingProxyType
 from typing import Any
 
 import aiohttp
@@ -82,6 +85,42 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 SERVICE_REQUEST = "request"
 
+# Optional per-call fields of haapi.request. Neither is ever stored: they apply
+# to that one call only and leave the endpoint's configuration untouched.
+ATTR_VARIABLES = "variables"
+ATTR_BODY_OVERRIDE = "body"
+
+
+def _request_overrides(
+    data: dict[str, Any],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Validate and extract (variables, body override) from request call data."""
+    variables = data.get(ATTR_VARIABLES)
+    if variables is not None and not isinstance(variables, Mapping):
+        raise ServiceValidationError(
+            "haapi.request: 'variables' must be a mapping of name: value"
+        )
+
+    body = data.get(ATTR_BODY_OVERRIDE)
+    if body == "":
+        # A blank field (e.g. cleared in the UI editor) means "not set": use
+        # the endpoint's configured body rather than silently sending none.
+        body = None
+    elif body is not None and not isinstance(body, str):
+        if isinstance(body, (dict, list, bool)):
+            # HA renders templates in action data before calling us, and a
+            # rendered JSON string comes back as a dict/list (or a bare
+            # true/false as a bool): re-serialize it as JSON. bool is checked
+            # before int/float because bool is an int subclass ("True").
+            body = json.dumps(body)
+        elif isinstance(body, (int, float)):
+            body = str(body)
+        else:
+            raise ServiceValidationError(
+                "haapi.request: 'body' must be a string"
+            )
+    return (dict(variables) if variables else None), body
+
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up HAAPI (registers the request action)."""
@@ -95,16 +134,21 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 f"HAAPI endpoint (resolved {len(callers)})"
             )
         caller = callers[0]
-        await caller.async_call_api()
-        status = caller.last_response_code or 0
+        variables, body_override = _request_overrides(call.data)
+        # Build the response from this call's own result snapshot, never from
+        # caller.last_response_*: those are shared per endpoint and a
+        # concurrent call can overwrite them while this one awaits storage.
+        result = await caller.async_call_api(
+            variables=variables, body_override=body_override
+        )
         return {
             ATTR_ENDPOINT_ID: caller.endpoint_id,
             ATTR_ENDPOINT_NAME: caller.endpoint_name,
-            ATTR_STATUS: status,
-            ATTR_OK: 200 <= status < 300,
-            ATTR_BODY: caller.last_response_body,
-            ATTR_HEADERS: caller.last_response_headers or {},
-            ATTR_TRUNCATED: caller.truncated,
+            ATTR_STATUS: result.status,
+            ATTR_OK: result.ok,
+            ATTR_BODY: result.body,
+            ATTR_HEADERS: dict(result.headers),
+            ATTR_TRUNCATED: result.truncated,
         }
 
     hass.services.async_register(
@@ -201,6 +245,21 @@ class HaapiCoordinator:
         await self.store.async_save(data_to_save)
 
 
+@dataclass(frozen=True, slots=True)
+class ApiCallResult:
+    """Immutable outcome of one async_call_api() invocation."""
+
+    status: int
+    body: str | None
+    headers: Mapping[str, str]
+    truncated: bool
+
+    @property
+    def ok(self) -> bool:
+        """Return True for a 2xx status."""
+        return 200 <= self.status < 300
+
+
 class HaapiApiCaller:
     """Class to handle API calls and store responses for a single endpoint."""
 
@@ -276,28 +335,32 @@ class HaapiApiCaller:
         for listener in self._listeners:
             listener()
 
-    def _render_template(self, template_str: str) -> str:
-        """Render a Jinja2 template."""
+    def _render_template(
+        self, template_str: str, variables: dict[str, Any] | None = None
+    ) -> str:
+        """Render a Jinja2 template, with optional per-call variables."""
         if not template_str:
             return ""
 
         try:
             tpl = template.Template(template_str, self.hass)
-            rendered = tpl.async_render()
+            rendered = tpl.async_render(variables)
             # Convert to string in case it returns a Wrapper object
             return str(rendered)
         except TemplateError as err:
             _LOGGER.error("Error rendering template: %s", err)
             return template_str
 
-    def _parse_headers(self, headers_str: str) -> dict[str, str]:
+    def _parse_headers(
+        self, headers_str: str, variables: dict[str, Any] | None = None
+    ) -> dict[str, str]:
         """Parse headers from string format."""
         headers = {}
         if not headers_str:
             return headers
 
         # Render template first
-        rendered = self._render_template(headers_str)
+        rendered = self._render_template(headers_str, variables)
 
         # Parse headers (format: "Key1: Value1\nKey2: Value2")
         for line in rendered.split("\n"):
@@ -308,7 +371,9 @@ class HaapiApiCaller:
 
         return headers
 
-    def _get_auth_headers(self) -> dict[str, str]:
+    def _get_auth_headers(
+        self, variables: dict[str, Any] | None = None
+    ) -> dict[str, str]:
         """Get authentication headers based on auth type."""
         headers = {}
         auth_type = self.endpoint_config.get(CONF_AUTH_TYPE)
@@ -316,31 +381,54 @@ class HaapiApiCaller:
         if auth_type == AUTH_BEARER:
             token = self.endpoint_config.get(CONF_BEARER_TOKEN)
             if token:
-                rendered_token = self._render_template(token)
+                rendered_token = self._render_template(token, variables)
                 headers["Authorization"] = f"Bearer {rendered_token}"
 
         elif auth_type == AUTH_API_KEY:
             api_key = self.endpoint_config.get(CONF_API_KEY)
             if api_key:
-                rendered_key = self._render_template(api_key)
+                rendered_key = self._render_template(api_key, variables)
                 headers["X-API-Key"] = rendered_key
 
         return headers
 
-    async def async_call_api(self) -> None:
-        """Execute the API call."""
+    async def async_call_api(
+        self,
+        variables: dict[str, Any] | None = None,
+        body_override: str | None = None,
+    ) -> ApiCallResult:
+        """Execute the API call and return this call's result snapshot.
+
+        ``variables`` are made available to the url/headers/body/auth templates
+        for this call only. ``body_override`` replaces the configured body for
+        this call only and is sent as-is: it is NOT rendered as a template
+        (Home Assistant has already rendered the action data, so rendering it
+        again would evaluate template syntax contained in the data itself).
+        Neither touches ``endpoint_config``.
+
+        The ``last_response_*`` attributes are updated too (for the sensors and
+        storage), but they are shared by every call on this endpoint; callers
+        that need *this* call's response must use the returned snapshot.
+        """
         # Capture the prior result so we can report what changed after the call.
         prev_code = self._last_response_code
         prev_body = self._last_response_body
 
-        url = self._render_template(self.endpoint_config[CONF_URL])
+        url = self._render_template(self.endpoint_config[CONF_URL], variables)
         method = self.endpoint_config[CONF_METHOD]
-        headers = self._parse_headers(self.endpoint_config.get(CONF_HEADERS, ""))
-        body = self._render_template(self.endpoint_config.get(CONF_BODY, ""))
+        headers = self._parse_headers(
+            self.endpoint_config.get(CONF_HEADERS, ""), variables
+        )
+        if body_override is not None:
+            body = body_override
+        else:
+            body = self._render_template(
+                self.endpoint_config.get(CONF_BODY, ""), variables
+            )
         content_type = self.endpoint_config.get(CONF_CONTENT_TYPE)
 
         # Add authentication headers
-        headers.update(self._get_auth_headers())
+        headers.update(self._get_auth_headers(variables))
 
         # Add content type if body is present
         if body and content_type:
@@ -352,8 +440,8 @@ class HaapiApiCaller:
             username = self.endpoint_config.get(CONF_USERNAME)
             password = self.endpoint_config.get(CONF_PASSWORD)
             if username and password:
-                rendered_username = self._render_template(username)
-                rendered_password = self._render_template(password)
+                rendered_username = self._render_template(username, variables)
+                rendered_password = self._render_template(password, variables)
                 auth = aiohttp.BasicAuth(rendered_username, rendered_password)
                 _LOGGER.debug("Using Basic Auth with username: %s", rendered_username)
             else:
@@ -386,6 +474,16 @@ class HaapiApiCaller:
             "Calling API: %s %s (timeout: %ss, SSL verify: %s, retries: %d)",
             method, url, timeout, verify_ssl, retries
         )
+
+        # This call's outcome is tracked in locals and only published to the
+        # shared last_response_* attributes in one synchronous step after the
+        # loop, so a concurrent call on this endpoint cannot interleave its
+        # writes with ours across the awaits below.
+        code = self._last_response_code
+        fetch_time = self._last_fetch_time
+        resp_body = self._last_response_body
+        resp_headers = self._last_response_headers
+        truncated = self._truncated
 
         # Retry loop
         last_exception = None
@@ -425,10 +523,10 @@ class HaapiApiCaller:
                                 request_kwargs["data"] = body
 
                         async with session.request(**request_kwargs) as response:
-                            self._last_response_code = response.status
-                            self._last_fetch_time = dt_util.utcnow()
+                            code = response.status
+                            fetch_time = dt_util.utcnow()
                             response_body = await response.text()
-                            self._last_response_headers = dict(response.headers)
+                            resp_headers = dict(response.headers)
 
                             # Check if response needs truncation
                             max_size = self.endpoint_config.get(CONF_MAX_RESPONSE_SIZE, DEFAULT_MAX_RESPONSE_SIZE)
@@ -439,18 +537,18 @@ class HaapiApiCaller:
                                 truncate_message = f"\n\n[TRUNCATED: Response size {original_size:,} bytes exceeds limit of {max_size:,} bytes. {original_size - max_size:,} bytes removed.]"
                                 available_space = max_size - len(truncate_message)
                                 if available_space > 0:
-                                    self._last_response_body = response_body[:available_space] + truncate_message
+                                    resp_body = response_body[:available_space] + truncate_message
                                 else:
                                     # If message won't fit, just truncate at max_size
-                                    self._last_response_body = response_body[:max_size]
-                                self._truncated = True
+                                    resp_body = response_body[:max_size]
+                                truncated = True
                                 _LOGGER.warning(
                                     "Response body truncated for %s: %d bytes -> %d bytes (limit: %d bytes)",
-                                    self.endpoint_name, original_size, len(self._last_response_body), max_size
+                                    self.endpoint_name, original_size, len(resp_body), max_size
                                 )
                             else:
-                                self._last_response_body = response_body
-                                self._truncated = False
+                                resp_body = response_body
+                                truncated = False
 
                             _LOGGER.info(
                                 "API call completed: %s (status: %d)",
@@ -483,23 +581,31 @@ class HaapiApiCaller:
                 # If this is the last attempt, set error response
                 if attempt >= retries:
                     _LOGGER.error("All retry attempts failed for %s: %s", url, err)
-                    self._last_response_code = 0
-                    self._last_fetch_time = dt_util.utcnow()
-                    self._last_response_body = str(err)
-                    self._last_response_headers = {}
-                    self._truncated = False
+                    code = 0
+                    fetch_time = dt_util.utcnow()
+                    resp_body = str(err)
+                    resp_headers = {}
+                    truncated = False
                 # Otherwise continue to next retry
                 continue
 
             except Exception as err:
                 # Don't retry on unexpected errors
                 _LOGGER.error("Unexpected error calling API %s: %s", url, err)
-                self._last_response_code = 0
-                self._last_fetch_time = dt_util.utcnow()
-                self._last_response_body = str(err)
-                self._last_response_headers = {}
-                self._truncated = False
+                code = 0
+                fetch_time = dt_util.utcnow()
+                resp_body = str(err)
+                resp_headers = {}
+                truncated = False
                 break
+
+        self._last_response_code = code
+        self._last_fetch_time = fetch_time
+        self._last_response_body = resp_body
+        self._last_response_headers = resp_headers
+        self._truncated = truncated
+        # Snapshot before any await: everything below may yield to other calls.
+        result = self._snapshot()
 
         # Save response data to storage
         await self._save_callback()
@@ -508,26 +614,44 @@ class HaapiApiCaller:
         self._notify_listeners()
 
         # Fire the completion event so integration-specific triggers can react.
-        self._fire_response_event(prev_code, prev_body)
+        self._fire_response_event(prev_code, prev_body, result)
+        return result
+
+    def _snapshot(self) -> ApiCallResult:
+        """Return an immutable copy of the current last_response_* state."""
+        return ApiCallResult(
+            status=self._last_response_code or 0,
+            body=self._last_response_body,
+            headers=MappingProxyType(dict(self._last_response_headers or {})),
+            truncated=self._truncated,
+        )
 
     def _fire_response_event(
-        self, prev_code: int | None, prev_body: str | None
+        self,
+        prev_code: int | None,
+        prev_body: str | None,
+        result: ApiCallResult | None = None,
     ) -> None:
-        """Fire the haapi_response event describing the completed call."""
-        status = self._last_response_code or 0
+        """Fire the haapi_response event describing the completed call.
+
+        ``result`` is the call's own snapshot; it defaults to the current
+        shared state.
+        """
+        if result is None:
+            result = self._snapshot()
         self.hass.bus.async_fire(
             EVENT_HAAPI_RESPONSE,
             {
                 ATTR_ENTRY_ID: self._entry_id,
                 ATTR_ENDPOINT_ID: self.endpoint_id,
                 ATTR_ENDPOINT_NAME: self.endpoint_name,
-                ATTR_STATUS: status,
-                ATTR_OK: 200 <= status < 300,
-                ATTR_BODY: self._last_response_body,
-                ATTR_HEADERS: self._last_response_headers or {},
-                ATTR_TRUNCATED: self._truncated,
-                ATTR_STATUS_CHANGED: self._last_response_code != prev_code,
-                ATTR_BODY_CHANGED: self._last_response_body != prev_body,
+                ATTR_STATUS: result.status,
+                ATTR_OK: result.ok,
+                ATTR_BODY: result.body,
+                ATTR_HEADERS: dict(result.headers),
+                ATTR_TRUNCATED: result.truncated,
+                ATTR_STATUS_CHANGED: result.status != prev_code,
+                ATTR_BODY_CHANGED: result.body != prev_body,
                 ATTR_PREVIOUS_STATUS: prev_code,
                 ATTR_PREVIOUS_BODY: prev_body,
             },
