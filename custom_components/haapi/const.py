@@ -74,8 +74,6 @@ ATTR_PREVIOUS_BODY = "previous_body"
 # Attributes
 ATTR_RESPONSE_BODY = "response_body"
 ATTR_RESPONSE_HEADERS = "response_headers"
-ATTR_REQUEST_HEADERS = "request_headers"
-ATTR_REQUEST_BODY = "request_body"
 ATTR_URL = "url"
 ATTR_METHOD = "method"
 ATTR_CONTENT_TYPE = "content_type"

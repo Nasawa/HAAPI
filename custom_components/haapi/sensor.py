@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -27,8 +28,6 @@ from .const import (
     CONF_RETRY_DELAY,
     ATTR_RESPONSE_BODY,
     ATTR_RESPONSE_HEADERS,
-    ATTR_REQUEST_HEADERS,
-    ATTR_REQUEST_BODY,
     ATTR_URL,
     ATTR_CONTENT_TYPE,
     ATTR_TIMEOUT,
@@ -45,6 +44,18 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _redact_url(url: str) -> str:
+    """Return the URL without user:password or query string (secrets often live there)."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return ""
+    host = parts.hostname or ""
+    if parts.port:
+        host = f"{host}:{parts.port}"
+    return urlunsplit((parts.scheme, host, parts.path, "", ""))
 
 
 async def async_setup_entry(
@@ -117,17 +128,12 @@ class HaapiRequestSensor(HaapiBaseSensor):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return request configuration as attributes."""
+        # Headers and body are never exposed, and the URL loses its credentials and query
+        # string: they often carry API keys, and attributes are readable by every user and
+        # stored by the recorder.
         attrs = {
-            ATTR_URL: self._endpoint_config[CONF_URL],
+            ATTR_URL: _redact_url(self._endpoint_config[CONF_URL]),
         }
-
-        # Add raw request headers (non-templated)
-        if CONF_HEADERS in self._endpoint_config and self._endpoint_config[CONF_HEADERS]:
-            attrs[ATTR_REQUEST_HEADERS] = self._endpoint_config[CONF_HEADERS]
-
-        # Add raw request body (non-templated)
-        if CONF_BODY in self._endpoint_config and self._endpoint_config[CONF_BODY]:
-            attrs[ATTR_REQUEST_BODY] = self._endpoint_config[CONF_BODY]
 
         # Add content type
         if CONF_CONTENT_TYPE in self._endpoint_config and self._endpoint_config[CONF_CONTENT_TYPE]:

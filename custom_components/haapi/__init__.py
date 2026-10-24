@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import ssl
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -27,6 +26,7 @@ from homeassistant.helpers import template
 from homeassistant.helpers.storage import Store
 from homeassistant.exceptions import ServiceValidationError, TemplateError
 from homeassistant.util import dt as dt_util
+from homeassistant.util.ssl import get_default_no_verify_context
 
 from .resolve import endpoint_callers
 
@@ -462,9 +462,8 @@ class HaapiApiCaller:
         # Create SSL context
         ssl_context = None
         if not verify_ssl:
-            ssl_context = ssl.create_default_context()
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
+            # Prebuilt by HA; creating one here loads the CA bundle on the event loop.
+            ssl_context = get_default_no_verify_context()
             _LOGGER.warning(
                 "SSL verification disabled for %s - use with caution!",
                 url
