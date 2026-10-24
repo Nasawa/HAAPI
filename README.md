@@ -105,9 +105,7 @@ Each configured endpoint creates a device with the following entities:
 ### 2. Sensor: `{endpoint_name} Request`
 - **State**: HTTP method (GET, POST, PUT, DELETE, PATCH)
 - **Attributes**:
-  - `url`: The configured URL (with templates)
-  - `request_headers`: Configured headers (raw, non-templated)
-  - `request_body`: Configured body (raw, non-templated)
+  - `url`: The configured URL (with templates), without credentials or query string
   - `content_type`: Content-Type header
   - `timeout`: Configured timeout in seconds
   - `verify_ssl`: SSL certificate verification enabled/disabled

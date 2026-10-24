@@ -148,3 +148,36 @@ async def test_response_sensor_with_truncation(
     attrs = state.attributes
     assert attrs[ATTR_TRUNCATED] is True
     assert "[TRUNCATED:" in attrs["response_body"]
+
+
+def test_redact_url() -> None:
+    """Request sensor URL attribute drops credentials and query string (HACS review)."""
+    from custom_components.haapi.sensor import _redact_url
+
+    assert _redact_url("https://user:pw@api.example.com:8443/v1/x?api_key=abc#frag") == "https://api.example.com:8443/v1/x"
+    assert _redact_url("https://api.example.com/say/{{ room }}?token={{ states('input_text.k') }}") == "https://api.example.com/say/{{ room }}"
+    assert _redact_url("https://api.example.com/test") == "https://api.example.com/test"
+
+
+async def test_request_sensor_hides_secrets(hass: HomeAssistant, mock_config_entry_data, mock_config_entry_options) -> None:
+    """Headers and body never reach entity attributes; URL has no query string."""
+    import copy
+
+    options = copy.deepcopy(mock_config_entry_options)
+    ep = options["endpoints"][0] if "endpoints" in options else None
+    if ep is None:
+        import pytest
+        pytest.skip("fixture shape has no endpoints list")
+    ep["url"] = "https://api.example.com/test?api_key=secret"
+    ep["headers"] = "Authorization: Bearer secret"
+    ep["body"] = '{"token": "secret"}'
+    entry = MockConfigEntry(domain=DOMAIN, data=mock_config_entry_data, options=options, version=2)
+    entry.add_to_hass(hass)
+    with patch("custom_components.haapi.Store.async_load", return_value={}):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    attrs = hass.states.get("sensor.test_endpoint_request").attributes
+    assert "request_headers" not in attrs and "request_body" not in attrs
+    assert attrs[ATTR_URL] == "https://api.example.com/test"
+    assert "secret" not in str(dict(attrs))
