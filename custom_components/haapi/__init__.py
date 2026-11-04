@@ -29,7 +29,7 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util.ssl import get_default_no_verify_context
 
 from .resolve import endpoint_callers
-from .redact import scrub_url
+from .redact import describe_error
 
 from .const import (
     DOMAIN,
@@ -282,12 +282,9 @@ class HaapiApiCaller:
         self._last_response_code: int | None = stored_data.get("last_response_code")
         self._last_response_body: str | None = stored_data.get("last_response_body")
         if self._last_response_body and stored_data.get("last_response_code") == 0:
-            # Error text stored by 2.12.0 and earlier could include the request URL.
-            self._last_response_body = scrub_url(
-                self._last_response_body,
-                endpoint_config.get(CONF_URL, ""),
-                endpoint_config.get(CONF_ENDPOINT_NAME, ""),
-            )
+            # Error text stored by 2.12.0 and earlier was the raw exception
+            # message, which could include the request URL.
+            self._last_response_body = "Request failed (details from an earlier version were cleared)"
         self._last_response_headers: dict[str, str] | None = stored_data.get("last_response_headers")
         self._truncated: bool = stored_data.get("truncated", False)
 
@@ -583,8 +580,8 @@ class HaapiApiCaller:
                                 break
 
             except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-                # aiohttp errors can embed the full request URL.
-                err_text = scrub_url(str(err), url, self.endpoint_name)
+                # Never str(err): aiohttp errors embed the request or redirect URL.
+                err_text = describe_error(err)
                 _LOGGER.warning(
                     "Error calling API %s (attempt %d/%d): %s",
                     self.endpoint_name, attempt + 1, retries + 1, err_text
@@ -606,7 +603,7 @@ class HaapiApiCaller:
 
             except Exception as err:
                 # Don't retry on unexpected errors
-                err_text = scrub_url(str(err), url, self.endpoint_name)
+                err_text = describe_error(err)
                 _LOGGER.error(
                     "Unexpected error calling API %s: %s", self.endpoint_name, err_text
                 )

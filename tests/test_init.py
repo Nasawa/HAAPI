@@ -158,7 +158,7 @@ async def test_api_call_retry_exhausted(hass: HomeAssistant, mock_endpoint_confi
     # Should have made 3 attempts (1 initial + 2 retries)
     assert mock_session.request.call_count == 3
     assert api_caller.last_response_code == 0
-    assert "Connection failed" in api_caller.last_response_body
+    assert api_caller.last_response_body == "ClientError: request failed"
 
 
 async def test_api_call_no_retry_on_client_error(hass: HomeAssistant, mock_endpoint_config) -> None:
@@ -411,6 +411,7 @@ async def test_failed_call_fires_event(hass: HomeAssistant, mock_endpoint_config
     assert events[0].data[ATTR_OK] is False
 
 
+
 SECRET_URL = "https://user:pw@api.example.com/v1/tok-PATHSECRET/x?api_key=QUERYSECRET"
 SECRETS = ("PATHSECRET", "QUERYSECRET", "user:pw")
 
@@ -440,17 +441,18 @@ async def test_api_call_logs_never_show_url(
 
 
 @pytest.mark.parametrize(
-    "exc",
+    "exc,expected",
     [
-        aiohttp.ClientError(f"Cannot connect to {SECRET_URL}"),
-        aiohttp.InvalidURL(SECRET_URL),
-        ValueError(f"bad request for {SECRET_URL}"),
+        (aiohttp.ClientError(f"Cannot connect to {SECRET_URL}"), "ClientError: request failed"),
+        (aiohttp.InvalidURL(SECRET_URL), "InvalidURL: invalid URL"),
+        (ValueError(f"bad request for {SECRET_URL}"), "ValueError: request failed"),
+        (asyncio.TimeoutError(), "TimeoutError: timed out"),
     ],
 )
-async def test_api_call_errors_scrub_url(
-    hass: HomeAssistant, mock_endpoint_config, caplog, exc
+async def test_api_call_errors_never_show_exception_text(
+    hass: HomeAssistant, mock_endpoint_config, caplog, exc, expected
 ) -> None:
-    """An exception that embeds the URL is scrubbed from logs and the stored body."""
+    """Errors are described by type, never by their (URL-bearing) message."""
     from custom_components.haapi import HaapiApiCaller
 
     caplog.set_level("DEBUG", logger="custom_components.haapi")
@@ -464,53 +466,72 @@ async def test_api_call_errors_scrub_url(
         await api_caller.async_call_api()
 
     assert api_caller.last_response_code == 0
-    assert "Test Endpoint" in api_caller.last_response_body
+    assert api_caller.last_response_body == expected
     for secret in SECRETS:
         assert secret not in caplog.text
-        assert secret not in api_caller.last_response_body
 
 
-def test_scrub_url_matches_yarl_spelling() -> None:
-    """aiohttp prints URLs via yarl, which can re-encode them; both spellings go."""
-    from yarl import URL
-
-    from custom_components.haapi.redact import scrub_url
-
-    raw = "https://api.example.com/say hi?q=a b&key=SECRET"
-    text = f"failed: {URL(raw)} / {raw}"
-    assert "SECRET" not in scrub_url(text, raw, "Endpoint")
-
-
-async def test_real_aiohttp_error_with_credentials_is_scrubbed(
-    hass: HomeAssistant, mock_endpoint_config, caplog, socket_enabled
-) -> None:
-    """aiohttp prints the URL without user:password; the query must still be scrubbed."""
+async def _redirect_server(target):
+    """Start a local server whose every response redirects to target(request); return (runner, port, hits)."""
     from aiohttp import web
 
-    from custom_components.haapi import HaapiApiCaller
+    hits = []
 
-    async def loop(request):
-        raise web.HTTPFound(request.path_qs)
+    async def handler(request):
+        hits.append(request.path_qs)
+        raise web.HTTPFound(target(request))
 
     app = web.Application()
-    app.router.add_get("/loop", loop)
+    app.router.add_route("GET", "/{tail:.*}", handler)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "127.0.0.1", 0)
     await site.start()
-    port = site._server.sockets[0].getsockname()[1]
+    return runner, site._server.sockets[0].getsockname()[1], hits
+
+
+@pytest.mark.parametrize(
+    "redirect",
+    [
+        # same URL (loop), same prefix + longer path/query, unrelated URL with secrets
+        lambda r: r.path_qs,
+        lambda r: f"{r.path}/more-PATHSECRET2?{r.query_string}&t=QSECRET2",
+        lambda r: "/elsewhere/tok-PATHSECRET2?t=QSECRET2",
+    ],
+    ids=["loop", "same-prefix", "unrelated"],
+)
+async def test_real_aiohttp_redirect_errors_leak_nothing(
+    hass: HomeAssistant, mock_endpoint_config, caplog, socket_enabled, redirect
+) -> None:
+    """A real request through a real connector; the redirect error must not leak any URL part."""
+    # aiohttp.TCPConnector is already the autouse Mock here; take the class from its module.
+    from aiohttp.connector import TCPConnector as RealConnector
+
+    from custom_components.haapi import HaapiApiCaller
+
+    runner, port, hits = await _redirect_server(redirect)
     try:
         caplog.set_level("DEBUG", logger="custom_components.haapi")
-        mock_endpoint_config["url"] = f"http://u:PWSECRET@127.0.0.1:{port}/loop?k=QUERYSECRET"
+        mock_endpoint_config["url"] = (
+            f"http://u:PWSECRET@127.0.0.1:{port}/v1/tok-PATHSECRET?k=QUERYSECRET"
+        )
         mock_endpoint_config["retries"] = 0
         api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, AsyncMock())
-        await api_caller.async_call_api()
+        # The autouse fixture mocks TCPConnector; this test needs the real one.
+        with patch("aiohttp.TCPConnector", RealConnector):
+            await api_caller.async_call_api()
     finally:
         await runner.cleanup()
 
-    assert api_caller.last_response_code == 0
-    for secret in ("PWSECRET", "QUERYSECRET"):
-        assert secret not in caplog.text
+    assert hits, "the local server was never reached"
+    assert api_caller.last_response_body == "TooManyRedirects: too many redirects"
+    # Only the integration's own log lines (the test server's access log is captured too).
+    haapi_log = "\n".join(
+        r.getMessage() for r in caplog.records if r.name.startswith("custom_components.haapi")
+    )
+    assert "too many redirects" in haapi_log
+    for secret in ("PWSECRET", "PATHSECRET", "QUERYSECRET", "QSECRET2"):
+        assert secret not in haapi_log
         assert secret not in api_caller.last_response_body
 
 
@@ -528,16 +549,15 @@ async def test_template_error_log_hides_template_source(
     assert "QSECRET" not in caplog.text
 
 
-async def test_stored_error_body_scrubbed_on_load(
+async def test_stored_error_body_cleared_on_load(
     hass: HomeAssistant, mock_endpoint_config
 ) -> None:
-    """Error text saved by older versions is scrubbed when restored."""
+    """Raw exception text saved by older versions is not restored."""
     from custom_components.haapi import HaapiApiCaller
 
-    mock_endpoint_config["url"] = "https://api.example.com/v1?api_key=OLDSECRET"
     stored = {
         "last_response_code": 0,
-        "last_response_body": "Cannot connect to https://api.example.com/v1?api_key=OLDSECRET",
+        "last_response_body": "Cannot connect to https://api.example.com/{{ x }}?api_key=OLDSECRET",
     }
     api_caller = HaapiApiCaller(hass, mock_endpoint_config, stored, AsyncMock())
 
@@ -551,15 +571,3 @@ def test_redact_url_bad_port_and_ipv6() -> None:
     assert redact_url("http://h:abc/x") == ""
     assert redact_url("http://h:99999/x") == ""
     assert redact_url("http://[::1]:8080/x?k=s") == "http://[::1]:8080/x"
-
-
-def test_scrub_url_strips_other_urls() -> None:
-    """URLs other than the request URL (e.g. after a redirect) lose userinfo and query."""
-    from custom_components.haapi.redact import scrub_url
-
-    text = "redirected to https://a:b@other.example/p?token=SECRET#frag giving up"
-    out = scrub_url(text, "https://api.example.com/x", "Endpoint")
-    assert out == "redirected to https://other.example/p giving up"
-    # The query is dropped up to the next whitespace or quote, commas included,
-    # so a comma inside the query can't leave its tail behind.
-    assert "SECRET" not in scrub_url("see https://o.example/p?a=1,b=SECRET.", "", "E")

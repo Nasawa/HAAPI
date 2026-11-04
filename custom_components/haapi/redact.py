@@ -2,17 +2,16 @@
 
 An endpoint URL can carry an API key in its query, credentials in its userinfo,
 or a token in its path, so nothing user-visible should show the rendered URL.
+Exception text is never shown either: aiohttp errors embed URLs (including
+redirect targets) in forms that can't be reliably scrubbed.
 """
 
 from __future__ import annotations
 
-import re
+import asyncio
 from urllib.parse import urlsplit, urlunsplit
 
-from yarl import URL
-
-# Any http(s) URL left in free text: userinfo and query/fragment are dropped.
-_URL_IN_TEXT = re.compile(r"(https?://)(?:[^\s'\"<>/@]*@)?([^\s'\"<>?#]*)(?:[?#][^\s'\"<>]*)?")
+import aiohttp
 
 
 def redact_url(url: str) -> str:
@@ -30,28 +29,26 @@ def redact_url(url: str) -> str:
     return urlunsplit((parts.scheme, host, parts.path, "", ""))
 
 
-def _spellings(url: str) -> set[str]:
-    """The ways an HTTP client may print ``url``: as written, re-encoded, without credentials."""
-    spellings = {url}
-    try:
-        parsed = URL(url)
-        spellings.add(str(parsed))
-        # aiohttp moves user:password into its auth settings and drops the fragment.
-        bare = parsed.with_user(None) if parsed.is_absolute() else parsed
-        spellings.update({str(bare), str(parsed.with_fragment(None)),
-                          str(bare.with_fragment(None))})
-    except (ValueError, TypeError):
-        pass
-    return spellings
-
-
-def scrub_url(text: str, url: str, replacement: str) -> str:
-    """Remove ``url`` and any other URL's secrets from ``text`` (e.g. an exception message).
-
-    Known spellings of the request URL become ``replacement``. Any other URL
-    still in the text (after a redirect, say) keeps only scheme, host and path.
-    """
-    for spelling in sorted(_spellings(url), key=len, reverse=True):
-        if spelling:
-            text = text.replace(spelling, replacement)
-    return _URL_IN_TEXT.sub(r"\1\2", text)
+def describe_error(err: BaseException) -> str:
+    """Describe a request failure from its type and URL-free fields only."""
+    name = type(err).__name__
+    if isinstance(err, (asyncio.TimeoutError, TimeoutError)):
+        detail = "timed out"
+    elif isinstance(err, aiohttp.TooManyRedirects):
+        detail = "too many redirects"
+    elif isinstance(err, aiohttp.ClientResponseError):
+        detail = f"HTTP {err.status}"
+    elif isinstance(err, aiohttp.InvalidURL):
+        detail = "invalid URL"
+    elif isinstance(err, aiohttp.ClientSSLError):
+        detail = "TLS/SSL error"
+    elif isinstance(err, aiohttp.ClientConnectorError):
+        reason = getattr(err.os_error, "strerror", None)
+        detail = f"cannot connect ({reason})" if reason else "cannot connect"
+    elif isinstance(err, aiohttp.ServerDisconnectedError):
+        detail = "server disconnected"
+    elif isinstance(err, aiohttp.ClientPayloadError):
+        detail = "response payload error"
+    else:
+        detail = "request failed"
+    return f"{name}: {detail}"
