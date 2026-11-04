@@ -5,7 +5,7 @@
 # HAAPI - Home Assistant API Integration
 
 <p align="center">
-  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg" alt="HACS Custom"></a>
+  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Default-41BDF5.svg" alt="HACS Default"></a>
   <a href="https://github.com/Nasawa/HAAPI/releases"><img src="https://img.shields.io/github/v/release/Nasawa/HAAPI" alt="Latest release"></a>
   <a href="https://github.com/Nasawa/HAAPI/actions/workflows/ci.yml"><img src="https://github.com/Nasawa/HAAPI/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Nasawa/HAAPI" alt="License: MIT"></a>
@@ -53,12 +53,23 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 
 ### HACS (Recommended)
 
-1. Open HACS in your Home Assistant instance
-2. Go to "Integrations"
-3. Click the three dots in the top right and select "Custom repositories"
-4. Add `https://github.com/Nasawa/HAAPI` as a custom repository with category "Integration"
-5. Click "Install"
-6. Restart Home Assistant
+HAAPI is in the HACS default repository list.
+
+[![Open your Home Assistant instance and open HAAPI inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Nasawa&repository=HAAPI&category=integration)
+
+1. Open HACS in your Home Assistant instance (or use the button above)
+2. Search for **HAAPI** and open it
+3. Click **Download**
+4. Restart Home Assistant
+5. Go to **Settings → Devices & services → Add integration** and search for **HAAPI**
+
+#### Custom repository (fallback)
+
+If HAAPI doesn't appear in the HACS search (for example on an older HACS version), add it as a custom repository:
+
+1. In HACS, click the three dots in the top right and select **Custom repositories**
+2. Add `https://github.com/Nasawa/HAAPI` with the type **Integration**
+3. Search for **HAAPI**, click **Download**, and restart Home Assistant
 
 ### Manual Installation
 

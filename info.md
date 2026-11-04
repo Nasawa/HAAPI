@@ -4,7 +4,7 @@ A universal API integration framework for Home Assistant where each "device" rep
 
 ## Quick Start
 
-1. Install HAAPI through HACS or manually
+1. Install HAAPI through HACS (search for "HAAPI") or manually
 2. Restart Home Assistant
 3. Go to Settings → Devices & Services → Add Integration
 4. Search for "HAAPI"
