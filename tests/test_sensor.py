@@ -152,11 +152,11 @@ async def test_response_sensor_with_truncation(
 
 def test_redact_url() -> None:
     """Request sensor URL attribute drops credentials and query string (HACS review)."""
-    from custom_components.haapi.sensor import _redact_url
+    from custom_components.haapi.redact import redact_url
 
-    assert _redact_url("https://user:pw@api.example.com:8443/v1/x?api_key=abc#frag") == "https://api.example.com:8443/v1/x"
-    assert _redact_url("https://api.example.com/say/{{ room }}?token={{ states('input_text.k') }}") == "https://api.example.com/say/{{ room }}"
-    assert _redact_url("https://api.example.com/test") == "https://api.example.com/test"
+    assert redact_url("https://user:pw@api.example.com:8443/v1/x?api_key=abc#frag") == "https://api.example.com:8443/v1/x"
+    assert redact_url("https://api.example.com/say/{{ room }}?token={{ states('input_text.k') }}") == "https://api.example.com/say/{{ room }}"
+    assert redact_url("https://api.example.com/test") == "https://api.example.com/test"
 
 
 async def test_request_sensor_hides_secrets(hass: HomeAssistant, mock_config_entry_data, mock_config_entry_options) -> None:

@@ -29,6 +29,7 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util.ssl import get_default_no_verify_context
 
 from .resolve import endpoint_callers
+from .redact import describe_error
 
 from .const import (
     DOMAIN,
@@ -280,6 +281,10 @@ class HaapiApiCaller:
         # Restore from stored data or initialize
         self._last_response_code: int | None = stored_data.get("last_response_code")
         self._last_response_body: str | None = stored_data.get("last_response_body")
+        if self._last_response_body and stored_data.get("last_response_code") == 0:
+            # Error text stored by 2.12.0 and earlier was the raw exception
+            # message, which could include the request URL.
+            self._last_response_body = "Request failed (details from an earlier version were cleared)"
         self._last_response_headers: dict[str, str] | None = stored_data.get("last_response_headers")
         self._truncated: bool = stored_data.get("truncated", False)
 
@@ -348,7 +353,12 @@ class HaapiApiCaller:
             # Convert to string in case it returns a Wrapper object
             return str(rendered)
         except TemplateError as err:
-            _LOGGER.error("Error rendering template: %s", err)
+            # HA's message quotes the template source, which may hold a token,
+            # key or password; name the endpoint and the error type only.
+            _LOGGER.error(
+                "Error rendering a template for %s (%s)",
+                self.endpoint_name, type(err).__name__,
+            )
             return template_str
 
     def _parse_headers(
@@ -443,7 +453,7 @@ class HaapiApiCaller:
                 rendered_username = self._render_template(username, variables)
                 rendered_password = self._render_template(password, variables)
                 auth = aiohttp.BasicAuth(rendered_username, rendered_password)
-                _LOGGER.debug("Using Basic Auth with username: %s", rendered_username)
+                _LOGGER.debug("Using Basic Auth for %s", self.endpoint_name)
             else:
                 _LOGGER.warning(
                     "Basic Auth selected but username or password is missing"
@@ -466,12 +476,12 @@ class HaapiApiCaller:
             ssl_context = get_default_no_verify_context()
             _LOGGER.warning(
                 "SSL verification disabled for %s - use with caution!",
-                url
+                self.endpoint_name
             )
 
         _LOGGER.debug(
             "Calling API: %s %s (timeout: %ss, SSL verify: %s, retries: %d)",
-            method, url, timeout, verify_ssl, retries
+            method, self.endpoint_name, timeout, verify_ssl, retries
         )
 
         # This call's outcome is tracked in locals and only published to the
@@ -485,7 +495,6 @@ class HaapiApiCaller:
         truncated = self._truncated
 
         # Retry loop
-        last_exception = None
         for attempt in range(retries + 1):
             if attempt > 0:
                 _LOGGER.info(
@@ -551,7 +560,7 @@ class HaapiApiCaller:
 
                             _LOGGER.info(
                                 "API call completed: %s (status: %d)",
-                                url,
+                                self.endpoint_name,
                                 response.status,
                             )
 
@@ -571,18 +580,22 @@ class HaapiApiCaller:
                                 break
 
             except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-                last_exception = err
+                # Never str(err): aiohttp errors embed the request or redirect URL.
+                err_text = describe_error(err)
                 _LOGGER.warning(
                     "Error calling API %s (attempt %d/%d): %s",
-                    url, attempt + 1, retries + 1, err
+                    self.endpoint_name, attempt + 1, retries + 1, err_text
                 )
 
                 # If this is the last attempt, set error response
                 if attempt >= retries:
-                    _LOGGER.error("All retry attempts failed for %s: %s", url, err)
+                    _LOGGER.error(
+                        "All retry attempts failed for %s: %s",
+                        self.endpoint_name, err_text
+                    )
                     code = 0
                     fetch_time = dt_util.utcnow()
-                    resp_body = str(err)
+                    resp_body = err_text
                     resp_headers = {}
                     truncated = False
                 # Otherwise continue to next retry
@@ -590,10 +603,13 @@ class HaapiApiCaller:
 
             except Exception as err:
                 # Don't retry on unexpected errors
-                _LOGGER.error("Unexpected error calling API %s: %s", url, err)
+                err_text = describe_error(err)
+                _LOGGER.error(
+                    "Unexpected error calling API %s: %s", self.endpoint_name, err_text
+                )
                 code = 0
                 fetch_time = dt_util.utcnow()
-                resp_body = str(err)
+                resp_body = err_text
                 resp_headers = {}
                 truncated = False
                 break

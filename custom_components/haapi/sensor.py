@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -12,6 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity import DeviceInfo
 
+from .redact import redact_url
 from .const import (
     DOMAIN,
     CONF_ENDPOINT_ID,
@@ -44,18 +44,6 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _redact_url(url: str) -> str:
-    """Return the URL without user:password or query string (secrets often live there)."""
-    try:
-        parts = urlsplit(url)
-    except ValueError:
-        return ""
-    host = parts.hostname or ""
-    if parts.port:
-        host = f"{host}:{parts.port}"
-    return urlunsplit((parts.scheme, host, parts.path, "", ""))
 
 
 async def async_setup_entry(
@@ -132,7 +120,7 @@ class HaapiRequestSensor(HaapiBaseSensor):
         # string: they often carry API keys, and attributes are readable by every user and
         # stored by the recorder.
         attrs = {
-            ATTR_URL: _redact_url(self._endpoint_config[CONF_URL]),
+            ATTR_URL: redact_url(self._endpoint_config[CONF_URL]),
         }
 
         # Add content type
