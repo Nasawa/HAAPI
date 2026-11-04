@@ -29,6 +29,7 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util.ssl import get_default_no_verify_context
 
 from .resolve import endpoint_callers
+from .redact import scrub_url
 
 from .const import (
     DOMAIN,
@@ -466,12 +467,12 @@ class HaapiApiCaller:
             ssl_context = get_default_no_verify_context()
             _LOGGER.warning(
                 "SSL verification disabled for %s - use with caution!",
-                url
+                self.endpoint_name
             )
 
         _LOGGER.debug(
             "Calling API: %s %s (timeout: %ss, SSL verify: %s, retries: %d)",
-            method, url, timeout, verify_ssl, retries
+            method, self.endpoint_name, timeout, verify_ssl, retries
         )
 
         # This call's outcome is tracked in locals and only published to the
@@ -551,7 +552,7 @@ class HaapiApiCaller:
 
                             _LOGGER.info(
                                 "API call completed: %s (status: %d)",
-                                url,
+                                self.endpoint_name,
                                 response.status,
                             )
 
@@ -572,17 +573,22 @@ class HaapiApiCaller:
 
             except (aiohttp.ClientError, asyncio.TimeoutError) as err:
                 last_exception = err
+                # aiohttp errors can embed the full request URL.
+                err_text = scrub_url(str(err), url, self.endpoint_name)
                 _LOGGER.warning(
                     "Error calling API %s (attempt %d/%d): %s",
-                    url, attempt + 1, retries + 1, err
+                    self.endpoint_name, attempt + 1, retries + 1, err_text
                 )
 
                 # If this is the last attempt, set error response
                 if attempt >= retries:
-                    _LOGGER.error("All retry attempts failed for %s: %s", url, err)
+                    _LOGGER.error(
+                        "All retry attempts failed for %s: %s",
+                        self.endpoint_name, err_text
+                    )
                     code = 0
                     fetch_time = dt_util.utcnow()
-                    resp_body = str(err)
+                    resp_body = err_text
                     resp_headers = {}
                     truncated = False
                 # Otherwise continue to next retry
@@ -590,10 +596,13 @@ class HaapiApiCaller:
 
             except Exception as err:
                 # Don't retry on unexpected errors
-                _LOGGER.error("Unexpected error calling API %s: %s", url, err)
+                err_text = scrub_url(str(err), url, self.endpoint_name)
+                _LOGGER.error(
+                    "Unexpected error calling API %s: %s", self.endpoint_name, err_text
+                )
                 code = 0
                 fetch_time = dt_util.utcnow()
-                resp_body = str(err)
+                resp_body = err_text
                 resp_headers = {}
                 truncated = False
                 break

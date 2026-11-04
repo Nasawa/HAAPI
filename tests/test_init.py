@@ -409,3 +409,73 @@ async def test_failed_call_fires_event(hass: HomeAssistant, mock_endpoint_config
     assert len(events) == 1
     assert events[0].data[ATTR_STATUS] == 0
     assert events[0].data[ATTR_OK] is False
+
+
+SECRET_URL = "https://user:pw@api.example.com/v1/tok-PATHSECRET/x?api_key=QUERYSECRET"
+SECRETS = ("PATHSECRET", "QUERYSECRET", "user:pw")
+
+
+async def test_api_call_logs_never_show_url(
+    hass: HomeAssistant, mock_endpoint_config, caplog
+) -> None:
+    """Logs name the endpoint, never the rendered URL (HACS review: secrets in query/path)."""
+    from custom_components.haapi import HaapiApiCaller
+
+    caplog.set_level("DEBUG", logger="custom_components.haapi")
+    mock_endpoint_config["url"] = SECRET_URL
+    mock_endpoint_config["verify_ssl"] = False
+
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.text = AsyncMock(return_value="ok")
+    mock_response.headers = {}
+
+    api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, AsyncMock())
+    with patch("aiohttp.ClientSession", return_value=make_session(mock_response)):
+        await api_caller.async_call_api()
+
+    assert "Test Endpoint" in caplog.text
+    for secret in SECRETS:
+        assert secret not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        aiohttp.ClientError(f"Cannot connect to {SECRET_URL}"),
+        aiohttp.InvalidURL(SECRET_URL),
+        ValueError(f"bad request for {SECRET_URL}"),
+    ],
+)
+async def test_api_call_errors_scrub_url(
+    hass: HomeAssistant, mock_endpoint_config, caplog, exc
+) -> None:
+    """An exception that embeds the URL is scrubbed from logs and the stored body."""
+    from custom_components.haapi import HaapiApiCaller
+
+    caplog.set_level("DEBUG", logger="custom_components.haapi")
+    mock_endpoint_config["url"] = SECRET_URL
+    mock_endpoint_config["retries"] = 1
+    mock_endpoint_config["retry_delay"] = 0
+
+    api_caller = HaapiApiCaller(hass, mock_endpoint_config, {}, AsyncMock())
+    with patch("aiohttp.ClientSession", return_value=make_session(raise_exc=exc)), \
+         patch("asyncio.sleep", new_callable=AsyncMock):
+        await api_caller.async_call_api()
+
+    assert api_caller.last_response_code == 0
+    assert "Test Endpoint" in api_caller.last_response_body
+    for secret in SECRETS:
+        assert secret not in caplog.text
+        assert secret not in api_caller.last_response_body
+
+
+def test_scrub_url_matches_yarl_spelling() -> None:
+    """aiohttp prints URLs via yarl, which can re-encode them; both spellings go."""
+    from yarl import URL
+
+    from custom_components.haapi.redact import scrub_url
+
+    raw = "https://api.example.com/say hi?q=a b&key=SECRET"
+    text = f"failed: {URL(raw)} / {raw}"
+    assert "SECRET" not in scrub_url(text, raw, "Endpoint")
