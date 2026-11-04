@@ -51,25 +51,23 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 
 ## Installation
 
-### HACS (Recommended)
+### Marketplace (Recommended)
 
-HAAPI is in the HACS default repository list.
+HAAPI is listed in the Home Assistant Marketplace (formerly HACS, built into Home Assistant since 2026.11).
 
-[![Open your Home Assistant instance and open HAAPI inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Nasawa&repository=HAAPI&category=integration)
+[![Open your Home Assistant instance and open HAAPI in the Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Nasawa&repository=HAAPI&category=integration)
 
-1. Open HACS in your Home Assistant instance (or use the button above)
+1. Go to **Settings → Marketplace** (or use the button above)
 2. Search for **HAAPI** and open it
 3. Click **Download**
 4. Restart Home Assistant
 5. Go to **Settings → Devices & services → Add integration** and search for **HAAPI**
 
+On Home Assistant versions before 2026.11, do the same from **HACS** instead.
+
 #### Custom repository (fallback)
 
-If HAAPI doesn't appear in the HACS search (for example on an older HACS version), add it as a custom repository:
-
-1. In HACS, click the three dots in the top right and select **Custom repositories**
-2. Add `https://github.com/Nasawa/HAAPI` with the type **Integration**
-3. Search for **HAAPI**, click **Download**, and restart Home Assistant
+If HAAPI doesn't appear in the search, add it as a custom repository: open the three-dot menu in the Marketplace (or HACS), select **Custom repositories**, add `https://github.com/Nasawa/HAAPI` with the type **Integration**, then download it as above.
 
 ### Manual Installation
 
