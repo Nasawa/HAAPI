@@ -5,7 +5,7 @@
 # HAAPI - Home Assistant API Integration
 
 <p align="center">
-  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg" alt="HACS Custom"></a>
+  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Default-41BDF5.svg" alt="HACS Default"></a>
   <a href="https://github.com/Nasawa/HAAPI/releases"><img src="https://img.shields.io/github/v/release/Nasawa/HAAPI" alt="Latest release"></a>
   <a href="https://github.com/Nasawa/HAAPI/actions/workflows/ci.yml"><img src="https://github.com/Nasawa/HAAPI/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Nasawa/HAAPI" alt="License: MIT"></a>
@@ -51,14 +51,23 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 
 ## Installation
 
-### HACS (Recommended)
+### Marketplace (Recommended)
 
-1. Open HACS in your Home Assistant instance
-2. Go to "Integrations"
-3. Click the three dots in the top right and select "Custom repositories"
-4. Add `https://github.com/Nasawa/HAAPI` as a custom repository with category "Integration"
-5. Click "Install"
-6. Restart Home Assistant
+HAAPI is listed in the Home Assistant Marketplace (formerly HACS, built into Home Assistant since 2026.11).
+
+[![Open your Home Assistant instance and open HAAPI in the Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Nasawa&repository=HAAPI&category=integration)
+
+1. Go to **Settings → Marketplace** (or use the button above)
+2. Search for **HAAPI** and open it
+3. Click **Download**
+4. Restart Home Assistant
+5. Go to **Settings → Devices & services → Add integration** and search for **HAAPI**
+
+On Home Assistant versions before 2026.11, do the same from **HACS** instead.
+
+#### Custom repository (fallback)
+
+If HAAPI doesn't appear in the search, add it as a custom repository: open the three-dot menu in the Marketplace (or HACS), select **Custom repositories**, add `https://github.com/Nasawa/HAAPI` with the type **Integration**, then download it as above.
 
 ### Manual Installation
 
