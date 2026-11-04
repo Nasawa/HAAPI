@@ -281,6 +281,13 @@ class HaapiApiCaller:
         # Restore from stored data or initialize
         self._last_response_code: int | None = stored_data.get("last_response_code")
         self._last_response_body: str | None = stored_data.get("last_response_body")
+        if self._last_response_body and stored_data.get("last_response_code") == 0:
+            # Error text stored by 2.12.0 and earlier could include the request URL.
+            self._last_response_body = scrub_url(
+                self._last_response_body,
+                endpoint_config.get(CONF_URL, ""),
+                endpoint_config.get(CONF_ENDPOINT_NAME, ""),
+            )
         self._last_response_headers: dict[str, str] | None = stored_data.get("last_response_headers")
         self._truncated: bool = stored_data.get("truncated", False)
 
@@ -349,7 +356,12 @@ class HaapiApiCaller:
             # Convert to string in case it returns a Wrapper object
             return str(rendered)
         except TemplateError as err:
-            _LOGGER.error("Error rendering template: %s", err)
+            # HA's message quotes the template source, which may hold a token,
+            # key or password; name the endpoint and the error type only.
+            _LOGGER.error(
+                "Error rendering a template for %s (%s)",
+                self.endpoint_name, type(err).__name__,
+            )
             return template_str
 
     def _parse_headers(
@@ -444,7 +456,7 @@ class HaapiApiCaller:
                 rendered_username = self._render_template(username, variables)
                 rendered_password = self._render_template(password, variables)
                 auth = aiohttp.BasicAuth(rendered_username, rendered_password)
-                _LOGGER.debug("Using Basic Auth with username: %s", rendered_username)
+                _LOGGER.debug("Using Basic Auth for %s", self.endpoint_name)
             else:
                 _LOGGER.warning(
                     "Basic Auth selected but username or password is missing"
@@ -486,7 +498,6 @@ class HaapiApiCaller:
         truncated = self._truncated
 
         # Retry loop
-        last_exception = None
         for attempt in range(retries + 1):
             if attempt > 0:
                 _LOGGER.info(
@@ -572,7 +583,6 @@ class HaapiApiCaller:
                                 break
 
             except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-                last_exception = err
                 # aiohttp errors can embed the full request URL.
                 err_text = scrub_url(str(err), url, self.endpoint_name)
                 _LOGGER.warning(
