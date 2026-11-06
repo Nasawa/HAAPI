@@ -19,6 +19,7 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 - [Features](#features)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Your First Request](#your-first-request)
 - [Entities](#entities)
 - [Triggers](#triggers)
 - [Conditions](#conditions)
@@ -103,6 +104,22 @@ If HAAPI doesn't appear in the search, add it as a custom repository: open the t
   - `bearer`: Bearer token authentication
   - `api_key`: API Key sent as `X-API-Key` header
 - Fill in the relevant fields based on your auth type
+
+## Your First Request
+
+Use a public endpoint to confirm that HAAPI is working before adding credentials or templates:
+
+1. Add another HAAPI integration entry with these values:
+   - **Endpoint Name**: `Cat Facts`
+   - **URL**: `https://catfact.ninja/fact`
+   - **HTTP Method**: `GET`
+   - **Authentication Type**: `none`
+2. Open the new **Cat Facts** device from **Settings** → **Devices & services** → **HAAPI**.
+3. Press **Cat Facts Trigger**.
+4. Open **Cat Facts Response** and confirm that its state is `200`.
+5. Expand the sensor attributes and find the returned JSON under `response_body`.
+
+That confirms the endpoint can be called and its result is available to Home Assistant. The Trigger button is useful for manual tests and dashboards; automations that need to use a fresh response immediately should use [`haapi.request`](#haapirequest).
 
 ## Entities
 
