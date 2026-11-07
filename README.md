@@ -16,41 +16,15 @@ A universal API integration framework for Home Assistant 2025.11+ where each "de
 
 > **Compatibility:** The minimum supported Home Assistant version is 2025.11. Integration-specific triggers and conditions require Home Assistant 2026.7 or later, as noted in those sections.
 
-## Table of Contents
+## What it does
 
-- [Features](#features)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Your First Request](#your-first-request)
-- [Entities](#entities)
-- [Triggers](#triggers)
-- [Conditions](#conditions)
-- [Actions](#actions)
-- [Usage](#usage)
-  - [Quick Start Examples](#quick-start-examples)
-  - [Template Support](#template-support)
-  - [Parsing JSON Responses](#parsing-json-responses)
-  - [Using Input Helpers](#using-input-helpers)
-- [Troubleshooting](#troubleshooting)
-- [Testing](#testing)
-  - [Quick Start](#quick-start)
-  - [Test Servers](#test-servers)
-- [Development](#development)
-- [Translations](#translations)
-- [Releases](#releases)
-- [Contributing](#contributing)
-- [Credits & origin](#credits--origin)
+HAAPI turns any HTTP API into Home Assistant devices, without YAML. Each endpoint you add becomes a device with:
 
-## Features
+- a **Trigger** button that makes the call,
+- a **Request** sensor showing what will be sent, and
+- a **Response** sensor whose state is the HTTP status, with the body and headers as attributes.
 
-- **Simple & Flexible**: One device = one API endpoint
-- **Template Support**: Use Jinja2 templates in URLs, headers, and request bodies
-- **Multiple Auth Types**: None, Basic, Bearer Token, or API Key authentication
-- **Response Storage**: Capture HTTP status codes, response bodies, and headers
-- **Integration Triggers**: React to call completions directly in automations (success, failure, response/status changed, body/JSON-field match) — no `delay` + state-watch workarounds
-- **Integration Conditions**: Gate automations on the last call's result (succeeded, body contains, JSON field is) without templating
-- **Request Action**: `haapi.request` calls an endpoint and returns its response in the same step (`response_variable`) — no button + wait/delay race; optional per-call `variables` and `body` override
-- **Modern HA Standards**: Built with config flow and proper entity platforms
+URLs, headers and bodies accept Jinja2 templates, and it supports Basic, Bearer and API-key auth. For automations there are HAAPI triggers ("call succeeded", "JSON field changed"…), conditions, and a `haapi.request` action that returns the response directly to the next step.
 
 ## Installation
 
@@ -77,559 +51,50 @@ If HAAPI doesn't appear in the search, add it as a custom repository: open the t
 1. Copy the `custom_components/haapi` folder to your Home Assistant `config/custom_components/` directory
 2. Restart Home Assistant
 
-## Configuration
+## Getting started
 
-Setup has two parts: create a HAAPI instance once, then add your endpoints to it.
+Setup has two parts: create a HAAPI instance once, then add an endpoint to it. This walkthrough uses the free [Cat Facts API](https://catfact.ninja/), so you don't need any credentials.
 
-**Create the instance**
+**1. Create an instance.** Go to **Settings → Devices & services → Add integration**, search for **HAAPI**, give it a name (for example "My APIs") and submit. An instance is just a container for endpoints; most setups need only one.
 
-1. Go to **Settings** → **Devices & Services**
-2. Click **Add Integration**
-3. Search for **HAAPI**
-4. Give the instance a **Name** (e.g., "Production APIs") and submit
+<p align="center"><img src="assets/screenshots/setup-instance.png" alt="Set up HAAPI dialog asking for an instance name" width="480"></p>
 
-An instance is just a container for endpoints. Most setups only need one.
+**2. Add an endpoint.** On the HAAPI integration page, click the gear icon (**Configure**) next to your instance and choose **Add New Endpoint**.
 
-**Add an endpoint**
+<p align="center"><img src="assets/screenshots/configure-menu.png" alt="Manage API Endpoints menu: Add New Endpoint, Edit Endpoint, Remove Endpoint" width="480"></p>
 
-1. On the HAAPI integration page, click the gear icon (**Configure**) on your instance
-2. Choose **Add New Endpoint**
-3. Fill in the two steps below
+Enter **Endpoint Name** `Cat Facts` and **URL** `https://catfact.ninja/fact`, leave the method on **GET**, and submit. On the next screen, leave **Authentication Type** on `none` and submit again.
 
-The same **Configure** menu has **Edit Endpoint** and **Remove Endpoint** for later changes. Each endpoint you add appears as its own device.
+<p align="center"><img src="assets/screenshots/add-endpoint.png" alt="Add API Endpoint form filled in with Cat Facts and its URL" width="420"></p>
 
-### Step 1: Basic Configuration
+**3. Make the call.** Open the new **Cat Facts** device and press **Trigger**. The **Response** sensor changes to `200`, and the fact itself is in its `response_body` attribute.
 
-- **Endpoint Name**: A unique identifier for this endpoint (e.g., "Cat Facts")
-- **URL**: The API endpoint URL (supports Jinja2 templates)
-- **HTTP Method**: GET, POST, PUT, DELETE, or PATCH
-- **Headers**: Optional headers in `Key: Value` format, one per line
-- **Body**: Optional request body (for POST/PUT/PATCH)
-- **Content-Type**: Content type for the request (default: `application/json`)
-- **Timeout**: Request timeout in seconds (1-300, default: 10)
-- **Verify SSL Certificate**: Enable/disable SSL certificate verification (default: enabled)
-- **Max Response Size**: Maximum response body size in bytes (0-10000000, default: 10240/10KB, 0 = unlimited)
-- **Number of Retries**: Retry attempts for failed requests (0-5, default: 0)
-- **Retry Delay**: Delay in seconds between retry attempts (1-60, default: 1)
+<p align="center"><img src="assets/screenshots/endpoint-device.png" alt="Cat Facts device page showing the Trigger button and a Response of 200" width="720"></p>
 
-### Step 2: Authentication
+That's it. Every option on those forms is explained in the [configuration reference](docs/configuration.md).
 
-- **Authentication Type**: Choose from:
-  - `none`: No authentication
-  - `basic`: HTTP Basic authentication (username + password)
-  - `bearer`: Bearer token authentication
-  - `api_key`: API Key sent as `X-API-Key` header
-- Fill in the relevant fields based on your auth type
+### Use the response in an automation
 
-## Your First Request
-
-Use a public endpoint to confirm that HAAPI is working before adding credentials or templates:
-
-1. On your HAAPI instance, click the gear icon (**Configure**) → **Add New Endpoint** (see [Configuration](#configuration)) and enter:
-   - **Endpoint Name**: `Cat Facts`
-   - **URL**: `https://catfact.ninja/fact`
-   - **HTTP Method**: `GET`
-   - **Authentication Type**: `none` (on the second step)
-2. Open the new **Cat Facts** device from **Settings** → **Devices & services** → **HAAPI**.
-3. Press **Cat Facts Trigger**.
-4. Open **Cat Facts Response** and confirm that its state is `200`.
-5. Expand the sensor attributes and find the returned JSON under `response_body`.
-
-That confirms the endpoint can be called and its result is available to Home Assistant. The Trigger button is useful for manual tests and dashboards; automations that need to use a fresh response immediately should use [`haapi.request`](#haapirequest).
-
-## Entities
-
-Each configured endpoint creates a device with the following entities:
-
-### 1. Button: `{endpoint_name} Trigger`
-- Press this button to trigger the API call
-
-### 2. Sensor: `{endpoint_name} Request`
-- **State**: HTTP method (GET, POST, PUT, DELETE, PATCH)
-- **Attributes**:
-  - `url`: The configured URL (with templates), without credentials or query string
-  - `content_type`: Content-Type header
-  - `timeout`: Configured timeout in seconds
-  - `verify_ssl`: SSL certificate verification enabled/disabled
-  - `max_response_size`: Maximum response body size in bytes
-  - `retries`: Number of retry attempts configured
-  - `retry_delay`: Delay in seconds between retry attempts
-
-### 3. Sensor: `{endpoint_name} Response`
-- **State**: HTTP status code (200, 404, 500, etc.)
-- **Attributes**:
-  - `response_body`: Response body content (may be truncated if exceeds max_response_size)
-  - `response_headers`: Response headers as a dictionary
-  - `truncated`: Boolean indicating if response was truncated due to size limit
-
-*Note: Home Assistant automatically tracks when sensor states change via `last_changed` and `last_updated` attributes.*
-
-## Triggers
-
-*Requires Home Assistant 2026.7 or later.*
-
-HAAPI provides integration-specific triggers so automations can react the moment a call completes — without pressing a button, adding a `delay`, and then watching the response sensor. Watching `sensor.{endpoint}_response` with a generic state trigger is unreliable, because that sensor's state is the HTTP status code: two calls that both return `200` produce no state change, so the automation never fires. The triggers below fire on the actual call completion instead.
-
-| Trigger | Fires when |
-| --- | --- |
-| **Response received** | A call completes, for any result. Optional **Status code** field limits it to one status (e.g. `429`). |
-| **Call succeeded** | A call completes with a `2xx` status. |
-| **Call failed** | A call fails: a network/timeout error (status `0`) or an HTTP error (status `400`+). |
-| **Response changed** | The response body differs from the previous call to that endpoint. |
-| **Status code changed** | The HTTP status code differs from the previous call to that endpoint. |
-| **Response body matches** | The response body matches a regular expression (`pattern`). |
-| **Response value matches** | A JSON field (`path`, e.g. `state` or `ams.0.humidity`) `equals` a value or matches a `pattern`. With neither, fires whenever the path resolves. |
-| **Response value changed** | A JSON field (`path`) differs from the previous call — field-level version of *Response changed*. |
-| **Recovered** | A call succeeds (2xx) after the previous call had failed. |
-| **Went down** | A call fails after the previous call had succeeded (2xx). |
-
-Each trigger can target one or more endpoint devices, or be left untargeted to fire for every endpoint.
-
-JSON field paths are dotted (`state`, `ams.0.humidity`), with list items addressed by index. This is a lightweight built-in resolver — no JSONPath dependency. If the body isn't JSON or the path doesn't resolve, value triggers simply don't fire.
-
-**Trigger variables** — every trigger exposes the result under `trigger`:
-
-| Variable | Description |
-| --- | --- |
-| `trigger.endpoint_name` | The endpoint's name |
-| `trigger.endpoint_id` | The endpoint's internal ID |
-| `trigger.status` | HTTP status code (`0` = network/timeout error) |
-| `trigger.ok` | `true` for a `2xx` status |
-| `trigger.body` | Response body (truncated per the endpoint's max response size) |
-| `trigger.headers` | Response headers as a dictionary |
-| `trigger.truncated` | Whether the body was truncated |
-| `trigger.status_changed` | Whether the status changed vs. the previous call |
-| `trigger.body_changed` | Whether the body changed vs. the previous call |
-| `trigger.previous_status` | The previous call's status code (`null` on the first call) |
-| `trigger.previous_body` | The previous call's response body (`null` on the first call) |
-
-**Example** — notify only when an endpoint's response actually changes:
-```yaml
-automation:
-  - alias: "Notify when API result changes"
-    trigger:
-      - trigger: haapi.response_changed
-        target:
-          device_id: <your HAAPI endpoint device>
-    action:
-      - action: notify.mobile_app
-        data:
-          message: "API changed: {{ trigger.body }}"
-```
-
-**Example** — alert on a failed call:
-```yaml
-automation:
-  - alias: "Alert on API failure"
-    trigger:
-      - trigger: haapi.call_failed
-    action:
-      - action: notify.mobile_app
-        data:
-          message: "{{ trigger.endpoint_name }} failed (status {{ trigger.status }})"
-```
-
-**Example** — act only when a specific JSON field reaches a value:
-```yaml
-automation:
-  - alias: "Notify when print finishes"
-    trigger:
-      - trigger: haapi.value_matches
-        target:
-          device_id: <your HAAPI endpoint device>
-        options:
-          path: state
-          equals: FINISH
-    action:
-      - action: notify.mobile_app
-        data:
-          message: "Print finished"
-```
-
-## Conditions
-
-*Requires Home Assistant 2026.7 or later.*
-
-HAAPI also provides integration-specific **conditions** so an automation can gate on the result of an endpoint's most recent call without templating. Each condition targets one or more endpoint devices (with multiple, all must satisfy it) and is evaluated live against the stored response.
-
-| Condition | Passes when |
-| --- | --- |
-| **Last call succeeded** | The endpoint's last call returned a `2xx` status. |
-| **Response contains** | The last response body matches a regex (`pattern`). |
-| **Response value is** | A JSON field (`path`) `equals` a value or matches a `pattern`. With neither, passes whenever the path resolves. |
-
-**Example** — only act if the last status fetch succeeded:
-```yaml
-automation:
-  - alias: "Refresh only when API is healthy"
-    trigger:
-      - trigger: time_pattern
-        minutes: "/5"
-    condition:
-      - condition: haapi.last_call_succeeded
-        target:
-          device_id: <your HAAPI endpoint device>
-    action:
-      - action: button.press
-        target:
-          entity_id: button.my_endpoint_trigger
-```
-
-## Actions
-
-### `haapi.request`
-
-Calls a single targeted endpoint and **returns its response**, so an automation can use the result in the very next step — no button-press + `wait`/`delay`, and no race. Target a single HAAPI endpoint device.
-
-Returns: `endpoint_id`, `endpoint_name`, `status`, `ok`, `body`, `headers`, `truncated`.
+The Trigger button is handy for dashboards and testing. In automations, use the `haapi.request` action instead: it waits for the call and hands you the response in the same step.
 
 ```yaml
-automation:
-  - alias: "Clear the plate when a finished print is detected"
-    trigger:
-      - trigger: state
-        entity_id: binary_sensor.printer_door
-        from: "on"
-        to: "off"
-    action:
-      - action: haapi.request          # fetch fresh status, get the response back
-        target:
-          device_id: <status endpoint device>
-        response_variable: status
-      - condition: "{{ (status.body | from_json).awaiting_plate_clear }}"
-      - action: haapi.request          # clear-plate endpoint
-        target:
-          device_id: <clear-plate endpoint device>
+actions:
+  - action: haapi.request
+    target:
+      entity_id: button.cat_facts_trigger
+    response_variable: cat_fact
+  - action: notify.persistent_notification
+    data:
+      message: "{{ (cat_fact.body | from_json).fact }}"
 ```
 
-This is the synchronous counterpart to the endpoint's **Trigger** button: the button is fire-and-forget (great for dashboards), while `haapi.request` awaits the call and hands you the response.
-
-#### Per-call data: `variables` and `body`
-
-`haapi.request` accepts two optional fields. Both apply to **that one call only** — the stored endpoint is never changed, and calls without them (and Trigger button presses) behave exactly as before.
-
-| Field | Type | What it does |
-|-------|------|--------------|
-| `variables` | mapping | Extra template variables for this call. Each name is available in the endpoint's URL, headers, body and auth templates (e.g. `{{ message }}`), alongside the usual HA state functions. |
-| `body` | string | Replaces the endpoint's configured body for this call, sent **as final text**: HAAPI does not render it again (Home Assistant already rendered any templates in the action's `data`). Omit it, or leave it empty, to use the configured body. |
-
-This removes the need to stash per-call values in helpers first (an `input_text` is capped at 255 characters; `variables` has no such limit).
-
-**Recommended: `variables` + a templated endpoint body.** The endpoint's own templates are where per-call values get inserted (and safely JSON-escaped). Endpoint configured with **Content-Type** `application/json` and **Body**:
-
-```jinja
-{"text": {{ message | tojson }}, "satellite": {{ satellite | tojson }}, "urgent": {{ urgent | default(false) | tojson }}}
-```
-
-Automation:
-
-```yaml
-- action: haapi.request
-  target:
-    entity_id: button.announce_trigger
-  data:
-    variables:
-      message: "{{ trigger.event.data.message }}"
-      satellite: "{{ trigger.event.data.satellite }}"
-      urgent: true
-  response_variable: result
-```
-
-**`body` override: a complete, ready-to-send body.** Use it when this one call needs a different payload altogether. Whatever HA hands over is sent as-is — any templates in it were rendered by HA in the automation, and their *output* is never rendered a second time (so text such as `{{ states(...) }}` arriving in a message stays literal):
-
-```yaml
-- action: haapi.request
-  target:
-    entity_id: button.announce_trigger
-  data:
-    body: '{"text": "Dinner is ready", "urgent": true}'
-```
-
-`variables` are not applied to `body` (they only feed the endpoint's templates), so don't write `{{ message }}` in `body` expecting it to come from `variables` — in an automation HA evaluates it first, where `message` is undefined. If you build `body` from automation data in a template, escape it yourself (e.g. `'{"text": {{ trigger.event.data.message | tojson }}}'`); the `variables` pattern above does that for you.
-
-Tips:
-- Use `| tojson` when inserting a variable into a JSON body: it adds the quotes and escapes quotes, backslashes, newlines and non-ASCII correctly, so arbitrary text (any length) stays valid JSON. Use `| urlencode` for URL query values.
-- Variable *values* are data, not templates: text such as `{{ ... }}` inside a value is sent literally, never rendered. Prefer `variables` + a templated endpoint body for untrusted text (voice transcripts, messages).
-- Home Assistant renders templates in an action's `data` before HAAPI sees it, so a `body:` written in an automation is usually already final text. HA may turn a value that looks like a number or boolean into one (e.g. `"123"` → `123`); add `| string` in the endpoint template if you need it quoted. This coercion only affects *templated* values; a static string such as `"123"` written without a template stays a string.
-- A `body` given as a mapping/list (e.g. one HA already parsed from JSON), or a bare boolean, is sent re-serialized as JSON (`true`, not `True`).
-
-## Usage
-
-### Quick Start Examples
-
-#### Example 1: Cat Facts API
-
-**Configuration:**
-- Endpoint Name: `Cat Facts`
-- URL: `https://catfact.ninja/fact`
-- Method: `GET`
-- Auth Type: `none`
-
-**Usage:**
-1. Press the "Cat Facts Trigger" button
-2. Check "Cat Facts Response" sensor (should be 200)
-3. View the cat fact in "Cat Facts Response" attributes
-
-**Automation Example:**
-```yaml
-automation:
-  - alias: "Daily Cat Fact"
-    trigger:
-      - platform: time
-        at: "09:00:00"
-    action:
-      - action: haapi.request
-        target:
-          entity_id: button.cat_facts_trigger
-        response_variable: cat_fact
-      - action: notify.mobile_app
-        data:
-          message: >
-            {{ (cat_fact.body | from_json).fact }}
-```
-
-`haapi.request` waits for this call to finish and returns its response to `cat_fact`, so the notification always uses the fresh result without a fixed delay.
-
-#### Example 2: POST with Template
-
-**Configuration:**
-- Endpoint Name: `Temperature Logger`
-- URL: `https://api.example.com/log`
-- Method: `POST`
-- Headers:
-  ```
-  Content-Type: application/json
-  ```
-- Body:
-  ```json
-  {
-    "temperature": "{{ states('sensor.living_room_temperature') }}",
-    "timestamp": "{{ now().isoformat() }}"
-  }
-  ```
-- Auth Type: `bearer`
-- Bearer Token: `your_api_token_here`
-
-#### Example 3: Dynamic URL with Template
-
-**Configuration:**
-- Endpoint Name: `Weather API`
-- URL: `https://api.weather.com/v1/location/{{ states('input_text.city_name') }}/forecast`
-- Method: `GET`
-- Auth Type: `api_key`
-- API Key: `your_api_key`
-
-### Template Support
-
-You can use Jinja2 templates in:
-- URLs
-- Headers (values)
-- Request body
-- Authentication credentials
-
-**Available template variables:**
-- All Home Assistant states: `{{ states('sensor.temperature') }}`
-- Time functions: `{{ now() }}`, `{{ utcnow() }}`
-- State attributes: `{{ state_attr('sensor.weather', 'humidity') }}`
-- And all other Home Assistant template functions
-
-### Parsing JSON Responses
-
-HAAPI stores raw response bodies. To parse JSON responses, create template sensors:
-
-```yaml
-template:
-  - sensor:
-      - name: "Cat Fact Text"
-        state: >
-          {{ (state_attr('sensor.cat_facts_response', 'response_body') | from_json).fact }}
-```
-
-### Using Input Helpers
-
-HAAPI templates work seamlessly with all Home Assistant input helpers (`input_text`, `input_number`, `input_select`, `input_boolean`, `input_datetime`), enabling dynamic user-controlled API configurations without editing YAML files.
-
-**Quick Example:**
-```yaml
-# configuration.yaml
-input_text:
-  city_name:
-    name: City Name
-    initial: London
-
-# HAAPI endpoint URL
-https://api.weather.com/forecast?city={{ states('input_text.city_name') | urlencode }}
-```
-
-**📖 [Read the full Input Helpers guide](docs/INPUT_HELPERS.md)** for:
-- 5 detailed examples covering all input helper types
-- Best practices and security considerations
-- Complete workflow examples with automations and dashboards
-
-## Troubleshooting
-
-<details>
-<summary><strong>Click to expand troubleshooting guide</strong></summary>
-
-### Check Logs
-
-Enable debug logging in `configuration.yaml`:
-
-```yaml
-logger:
-  default: info
-  logs:
-    custom_components.haapi: debug
-```
-
-### Common Issues
-
-1. **Templates not rendering**: Ensure your template syntax is correct
-2. **Authentication failing**: Verify credentials and auth type
-3. **Connection errors**: Check URL accessibility from your HA instance
-
-</details>
-
-## Testing
-
-HAAPI includes test servers and automated demo setup for easy exploration and validation.
-
-### Quick Start
-
-**Automated Demo Setup** (recommended for first-time users):
-```bash
-python tools/setup_demo_endpoints.py
-```
-
-This interactive script creates 9 pre-configured endpoints demonstrating all HAAPI features.
-
-**📖 [Read the Demo Setup guide](tools/README.md)** for detailed usage and options.
-
-### Test Servers
-
-**Start local test servers:**
-```bash
-cd test_servers
-pip install -r requirements.txt
-python echo_server.py      # Port 5000 - Echo server
-python auth_server.py      # Port 5001 - Auth testing
-```
-
-**📖 [Read the Testing guide](docs/TESTING.md)** for detailed server documentation and workflows.
-
-## Development
-
-This integration follows the YAGNI (You Aren't Gonna Need It) philosophy - keeping things simple and focused on core functionality.
-
-<details>
-<summary><strong>Project Structure</strong></summary>
-
-```
-custom_components/haapi/
-├── __init__.py          # Integration setup & API caller
-├── button.py            # Button entity platform
-├── config_flow.py       # Configuration flow
-├── const.py             # Constants
-├── manifest.json        # Integration manifest
-├── sensor.py            # Sensor entity platform
-├── strings.json         # UI strings
-└── translations/
-    ├── en.json          # English translations
-    ├── es.json          # Spanish translations (AI-generated)
-    ├── fr.json          # French translations (AI-generated)
-    └── de.json          # German translations (AI-generated)
-
-docs/
-├── INPUT_HELPERS.md     # Comprehensive input helper guide
-└── TESTING.md           # Testing documentation
-
-test_servers/
-├── echo_server.py       # Local testing server
-├── auth_server.py       # Authentication testing server
-├── https_server.py      # HTTPS testing server
-└── README.md            # Test server documentation
-
-tests/
-├── __init__.py          # Test package init
-├── conftest.py          # Pytest fixtures
-├── test_config_flow.py  # Config flow tests
-├── test_init.py         # API caller tests
-├── test_button.py       # Button entity tests
-└── test_sensor.py       # Sensor entity tests
-
-tools/
-└── setup_demo_endpoints.py  # Demo endpoint setup script
-```
-
-</details>
-
-<details>
-<summary><strong>Running Tests</strong></summary>
-
-HAAPI includes comprehensive unit tests using pytest.
-
-**Install test dependencies:**
-```bash
-pip install -r requirements_test.txt
-```
-
-**Run all tests:**
-```bash
-pytest tests/
-```
-
-**Run with coverage report:**
-```bash
-pytest tests/ --cov=custom_components.haapi --cov-report=html
-```
-
-**Test coverage includes:**
-- Config flow (setup, add/edit/remove endpoints)
-- API caller (successful calls, errors, retries, truncation, SSL)
-- Button entity (trigger functionality)
-- Sensor entities (request/response attributes)
-
-</details>
-
-## Translations
-
-<details>
-<summary><strong>Available Languages & Contributing</strong></summary>
-
-HAAPI is available in multiple languages:
-
-- **English** (en) - Native
-- **Spanish** (es) - ⚠️ AI-generated, needs review
-- **French** (fr) - ⚠️ AI-generated, needs review
-- **German** (de) - ⚠️ AI-generated, needs review
-
-### Help Improve Translations
-
-The Spanish, French, and German translations were generated by AI and may contain errors or unnatural phrasing. **Native speakers are needed to review and improve these translations!**
-
-If you're a native speaker of any of these languages, please:
-
-1. Review the translation file in `custom_components/haapi/translations/`
-2. Fix any errors, awkward phrasing, or technical terminology issues
-3. Submit a Pull Request with your improvements
-
-### Adding New Languages
-
-To add a new language:
-
-1. Copy `custom_components/haapi/translations/en.json` to a new file with your language code (e.g., `it.json` for Italian)
-2. Translate all text values (keep all keys in English)
-3. Keep placeholder variables like `{endpoint_name}` unchanged
-4. Test the translation in Home Assistant
-5. Submit a Pull Request
-
-Your contributions help make HAAPI accessible to users worldwide!
-
-</details>
-
-## Releases
-
-Releases are automatic. When a push to `main` changes `version` in `custom_components/haapi/manifest.json` and CI passes, the [Release workflow](.github/workflows/release.yml) creates the `v<version>` tag and a GitHub Release with auto-generated notes, which HACS picks up. Pushes that don't change the version do nothing. To ship a release, bump the manifest version in your PR.
+## Documentation
+
+- [Configuration reference](docs/configuration.md): every endpoint field, authentication types, and the entities each endpoint creates
+- [Automations](docs/automations.md): HAAPI triggers, conditions, and the `haapi.request` action (per-call `variables` and `body`)
+- [Examples and templates](docs/examples.md): POST bodies, dynamic URLs, parsing JSON, input helpers
+- [Troubleshooting](docs/troubleshooting.md): debug logging and common problems
+- [Development](docs/development.md): tests, demo setup, translations, and releases
 
 ## Contributing
 
@@ -637,7 +102,7 @@ Releases are automatic. When a push to `main` changes `version` in `custom_compo
 
 - **Found a bug or have an idea?** [Open an issue](https://github.com/Nasawa/HAAPI/issues) — clear reports and feature requests are genuinely appreciated.
 - **Want to send a change?** Fork the repo, create a branch, and open a PR. Small, focused PRs are easiest to review and merge.
-- **Running the tests:** `pip install -r requirements_test.txt` then `python -m pytest -q`. Every PR runs the same checks in CI — pytest, [hassfest](https://developers.home-assistant.io/docs/creating_integration_manifest/), and HACS validation — so you can see exactly what will run before you push.
+- **Running the tests and building locally:** see the [development guide](docs/development.md). In short: `pip install -r requirements_test.txt` then `python -m pytest -q`. Every PR runs the same checks in CI — pytest, [hassfest](https://developers.home-assistant.io/docs/creating_integration_manifest/), and HACS validation — so you can see exactly what will run before you push.
 - **Translations** are especially welcome: the non-English strings are community-reviewable, and native-speaker corrections are exactly the kind of contribution this project wants.
 
 New contributors are welcome regardless of experience level. If something's unclear, open an issue and ask.
