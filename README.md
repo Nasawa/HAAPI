@@ -76,10 +76,24 @@ If HAAPI doesn't appear in the search, add it as a custom repository: open the t
 
 ## Configuration
 
+Setup has two parts: create a HAAPI instance once, then add your endpoints to it.
+
+**Create the instance**
+
 1. Go to **Settings** → **Devices & Services**
 2. Click **Add Integration**
 3. Search for **HAAPI**
-4. Follow the configuration steps:
+4. Give the instance a **Name** (e.g., "Production APIs") and submit
+
+An instance is just a container for endpoints. Most setups only need one.
+
+**Add an endpoint**
+
+1. On the HAAPI integration page, click **Configure** on your instance
+2. Choose **Add New Endpoint**
+3. Fill in the two steps below
+
+The same **Configure** menu has **Edit Endpoint** and **Remove Endpoint** for later changes. Each endpoint you add appears as its own device.
 
 ### Step 1: Basic Configuration
 
