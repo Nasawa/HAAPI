@@ -109,11 +109,11 @@ If HAAPI doesn't appear in the search, add it as a custom repository: open the t
 
 Use a public endpoint to confirm that HAAPI is working before adding credentials or templates:
 
-1. Add another HAAPI integration entry with these values:
+1. On your HAAPI instance, click **Configure** → **Add New Endpoint** (see [Configuration](#configuration)) and enter:
    - **Endpoint Name**: `Cat Facts`
    - **URL**: `https://catfact.ninja/fact`
    - **HTTP Method**: `GET`
-   - **Authentication Type**: `none`
+   - **Authentication Type**: `none` (on the second step)
 2. Open the new **Cat Facts** device from **Settings** → **Devices & services** → **HAAPI**.
 3. Press **Cat Facts Trigger**.
 4. Open **Cat Facts Response** and confirm that its state is `200`.
