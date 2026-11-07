@@ -14,6 +14,8 @@
 
 A universal API integration framework for Home Assistant 2025.11+ where each "device" represents one API endpoint. Configure and trigger API calls with responses stored as entity states and attributes.
 
+> **Compatibility:** The minimum supported Home Assistant version is 2025.11. Integration-specific triggers and conditions require Home Assistant 2026.7 or later, as noted in those sections.
+
 ## Table of Contents
 
 - [Features](#features)
@@ -359,15 +361,17 @@ automation:
       - platform: time
         at: "09:00:00"
     action:
-      - service: button.press
+      - action: haapi.request
         target:
           entity_id: button.cat_facts_trigger
-      - delay: 2
-      - service: notify.mobile_app
+        response_variable: cat_fact
+      - action: notify.mobile_app
         data:
           message: >
-            {{ (state_attr('sensor.cat_facts_response', 'response_body') | from_json).fact }}
+            {{ (cat_fact.body | from_json).fact }}
 ```
+
+`haapi.request` waits for this call to finish and returns its response to `cat_fact`, so the notification always uses the fresh result without a fixed delay.
 
 #### Example 2: POST with Template
 
@@ -627,7 +631,7 @@ HAAPI was created by **Christopher** ([@Nasawa](https://github.com/Nasawa)) toge
 
 **HAAPI is open to everyone.** Made here, built for the whole Home Assistant community: it's MIT-licensed, and your issues, ideas, and pull requests are genuinely wanted (see [Contributing](#contributing)). The origin story and the open door are both true at once — knowing who started it takes nothing away from its being yours to use, fork, and improve.
 
-Built and maintained against Home Assistant 2026.7+, and dogfooded daily in our own homes — HAAPI runs the authors' real routines, not just the [Cat Facts API](https://catfact.ninja/) demo.
+HAAPI is dogfooded daily in the authors' own homes — it runs real routines, not just the [Cat Facts API](https://catfact.ninja/) demo.
 
 ## License
 

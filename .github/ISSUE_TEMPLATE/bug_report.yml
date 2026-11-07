@@ -1,0 +1,91 @@
+name: Bug report
+description: Report a reproducible problem with HAAPI
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve HAAPI.
+
+        Before submitting, remove secrets and private data from everything you share. In particular, redact API keys, tokens, authorization headers, credentials, private URLs, query parameters, IP addresses, and sensitive request or response bodies.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and did not find a duplicate.
+          required: true
+        - label: I removed secrets and private data from this report and its attachments.
+          required: true
+
+  - type: input
+    id: haapi_version
+    attributes:
+      label: HAAPI version
+      description: Find this on the HAAPI download page in the Marketplace or HACS.
+      placeholder: "2.12.1"
+    validations:
+      required: true
+
+  - type: input
+    id: home_assistant_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.11.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation_method
+    attributes:
+      label: Installation method
+      options:
+        - Marketplace
+        - HACS
+        - Manual
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and its impact.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Use a minimal endpoint or sanitized example when possible.
+      placeholder: |
+        1. Configure ...
+        2. Trigger ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste only the relevant, sanitized lines. Do not include tokens, authorization headers, credentials, private URLs, query parameters, or sensitive response data.
+      render: text
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add sanitized screenshots or other details that may help reproduce the problem.
