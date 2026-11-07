@@ -89,7 +89,7 @@ An instance is just a container for endpoints. Most setups only need one.
 
 **Add an endpoint**
 
-1. On the HAAPI integration page, click **Configure** on your instance
+1. On the HAAPI integration page, click the gear icon (**Configure**) on your instance
 2. Choose **Add New Endpoint**
 3. Fill in the two steps below
 
