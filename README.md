@@ -14,6 +14,8 @@
 
 A universal API integration framework for Home Assistant 2025.11+ where each "device" represents one API endpoint. Configure and trigger API calls with responses stored as entity states and attributes.
 
+> **Compatibility:** The minimum supported Home Assistant version is 2025.11. Integration-specific triggers and conditions require Home Assistant 2026.7 or later, as noted in those sections.
+
 ## Table of Contents
 
 - [Features](#features)
@@ -77,10 +79,24 @@ If HAAPI doesn't appear in the search, add it as a custom repository: open the t
 
 ## Configuration
 
+Setup has two parts: create a HAAPI instance once, then add your endpoints to it.
+
+**Create the instance**
+
 1. Go to **Settings** → **Devices & Services**
 2. Click **Add Integration**
 3. Search for **HAAPI**
-4. Follow the configuration steps:
+4. Give the instance a **Name** (e.g., "Production APIs") and submit
+
+An instance is just a container for endpoints. Most setups only need one.
+
+**Add an endpoint**
+
+1. On the HAAPI integration page, click the gear icon (**Configure**) on your instance
+2. Choose **Add New Endpoint**
+3. Fill in the two steps below
+
+The same **Configure** menu has **Edit Endpoint** and **Remove Endpoint** for later changes. Each endpoint you add appears as its own device.
 
 ### Step 1: Basic Configuration
 
@@ -362,15 +378,17 @@ automation:
       - platform: time
         at: "09:00:00"
     action:
-      - service: button.press
+      - action: haapi.request
         target:
           entity_id: button.cat_facts_trigger
-      - delay: 2
-      - service: notify.mobile_app
+        response_variable: cat_fact
+      - action: notify.mobile_app
         data:
           message: >
-            {{ (state_attr('sensor.cat_facts_response', 'response_body') | from_json).fact }}
+            {{ (cat_fact.body | from_json).fact }}
 ```
+
+`haapi.request` waits for this call to finish and returns its response to `cat_fact`, so the notification always uses the fresh result without a fixed delay.
 
 #### Example 2: POST with Template
 
@@ -630,7 +648,7 @@ HAAPI was created by **Christopher** ([@Nasawa](https://github.com/Nasawa)) toge
 
 **HAAPI is open to everyone.** Made here, built for the whole Home Assistant community: it's MIT-licensed, and your issues, ideas, and pull requests are genuinely wanted (see [Contributing](#contributing)). The origin story and the open door are both true at once — knowing who started it takes nothing away from its being yours to use, fork, and improve.
 
-Built and maintained against Home Assistant 2026.7+, and dogfooded daily in our own homes — HAAPI runs the authors' real routines, not just the [Cat Facts API](https://catfact.ninja/) demo.
+HAAPI is dogfooded daily in the authors' own homes — it runs real routines, not just the [Cat Facts API](https://catfact.ninja/) demo.
 
 ## License
 
